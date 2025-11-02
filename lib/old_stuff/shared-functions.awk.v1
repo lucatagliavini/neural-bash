@@ -1,0 +1,57 @@
+# lib/functions/shared-functions.awk
+
+# Converte una riga di input o pesi in un array (es. "0.2 0.3 0.5")
+function split_line_to_array(line, arr,  i) {
+    split(line, arr, /[ \t]+/)
+    return length(arr)
+}
+
+# Calcola il prodotto scalare tra due vettori (input ⋅ pesi)
+function dot_product(input, weights,   sum, i) {
+    sum = 0
+    for (i = 1; i <= length(input); i++) {
+        sum += input[i] * weights[i]
+    }
+    return sum
+}
+
+# Carica una matrice di pesi da un file: weights[row,col]
+# Assume che l’ultimo elemento di ogni riga sia il bias
+function read_weights(file, weights,   line, row, temp, i) {
+    row = 0
+    while ((getline line < file) > 0) {
+        row++
+        split_line_to_array(line, temp)
+        for (i = 1; i <= length(temp); i++) {
+            weights[row,i] = temp[i]
+        }
+        weights["cols"] = length(temp) - 1   # ultimo = bias
+    }
+    weights["rows"] = row
+    close(file)
+}
+
+# Carica file input (ogni riga è un sample) in matrice: input[row,col]
+function read_input_file(file, matrix,   row, line, temp, i) {
+    row = 0
+    while ((getline line < file) > 0) {
+        row++
+        split_line_to_array(line, temp)
+        for (i = 1; i <= length(temp); i++) {
+            matrix[row,i] = temp[i]
+        }
+        matrix["cols"] = length(temp)
+    }
+    matrix["rows"] = row
+    close(file)
+}
+
+# Funzione di utilità per debug (stampa un vettore)
+function print_vector(vec, len, label,  i) {
+    printf("[DEBUG] %s = [", label)
+    for (i = 1; i <= len; i++) {
+        printf("%s%s", vec[i], (i < len ? ", " : ""))
+    }
+    print "]"
+}
+

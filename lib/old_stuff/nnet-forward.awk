@@ -1,0 +1,45 @@
+# lib/nnet-forward.awk
+
+# Elabora un layer neurale singolo
+# Richiede:
+#   -v weights=<file pesi>
+#   -v activation_function=<nome attivazione>
+#   -v nrows=<numero neuroni> (righe della matrice)
+#   -v ncols=<numero input>   (colonne della matrice)
+#   -v output=<file output layer>
+
+BEGIN {
+    # Carica la matrice dei pesi
+    load_weight_matrix(weights, W, nrows, ncols)
+
+    # Apri output
+    output_file = (output != "" ? output : "/dev/stdout")
+    out = output_file
+}
+
+{
+    # Parsa riga di input in vettore
+    input_len = parse_line_to_array($0, input)
+
+    # Verifica dimensione compatibile
+    if (input_len != ncols) {
+        print "[ERROR] Input size != layer input size: " input_len " vs " ncols > "/dev/stderr"
+        exit 1
+    }
+
+    # Calcola z = W * input
+    matrix_vector_mul(W, nrows, ncols, input, z)
+
+    # Applica funzione di attivazione
+    for (i = 1; i <= nrows; i++) {
+        a[i] = activation(z[i], activation_function)
+    }
+
+    # Stampa vettore output
+    print_vector(a, nrows, out)
+}
+
+END {
+    if (out != "/dev/stdout") close(out)
+}
+

@@ -1,0 +1,4 @@
+ACTIVATION=sigmoid
+ROWS=1
+COLS=3
+0.875 1.8 2.875

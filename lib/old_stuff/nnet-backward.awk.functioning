@@ -1,0 +1,102 @@
+# nnet-backward.awk
+# Calcola i delta e i gradienti del layer di output
+# Richiede: -f activation.awk -f math.awk
+# Parametri richiesti:
+#   -v output_file=...           output del layer corrente (es. layer1.out)
+#   -v target_file=...           dataset completo con target
+#   -v activation_function=...   nome funzione attivazione (es. sigmoid)
+#   -v delta_output_file=...     dove scrivere i delta (es. layer1-delta.txt)
+# Opzionali:
+#   -v input_file=...            se definito, calcola anche gradienti
+#   -v gradient_output_file=...  dove scrivere gradienti
+#   -v learning_rate=...         default: 0.1
+#   -v debug=1                   per log su stderr
+
+BEGIN {
+    FS = OFS = " "
+    eta = (learning_rate == "") ? 0.1 : learning_rate
+    row_output = 0
+    row_target = 0
+    row_input = 0
+
+    if (debug == "") debug = 0
+    if (delta_output_file == "") {
+        print "Errore: manca delta_output_file" > "/dev/stderr"
+        exit 2
+    }
+}
+
+# === Caricamento Target ===
+FILENAME == target_file {
+    target[row_target++] = $NF
+    next
+}
+
+# === Caricamento Output ===
+FILENAME == output_file {
+    for (i = 1; i <= NF; i++) {
+        output[row_output, i] = $i
+    }
+    row_output++
+    next
+}
+
+END {
+    if (row_output != row_target) {
+        print "Errore: righe output != righe target" > "/dev/stderr"
+        exit 1
+    }
+
+    # === Calcolo e scrittura dei delta ===
+    for (r = 0; r < row_output; r++) {
+        line = ""
+        for (j = 1; (r, j) in output; j++) {
+            y = output[r, j]
+            t = target[r]
+            delta = (y - t) * activation_derivative(y, activation_function)
+            delta_val[r, j] = delta
+            if (debug) {
+                printf "# DELTA r=%d j=%d y=%.6f t=%.6f delta=%.6f\n", r, j, y, t, delta > "/dev/stderr"
+            }
+            line = line sprintf("%f ", delta)
+        }
+        print line > delta_output_file
+    }
+    close(delta_output_file)
+
+    # === Se richiesto, carica input per calcolo gradienti ===
+    if (input_file != "" && gradient_output_file != "") {
+
+        while ((getline line < input_file) > 0) {
+            split(line, fields, FS)
+            for (i = 1; i <= length(fields); i++) {
+                input[row_input, i] = fields[i]
+            }
+            row_input++
+        }
+        close(input_file)
+
+        if (row_input != row_output) {
+            print "Errore: righe input != righe output" > "/dev/stderr"
+            exit 3
+        }
+
+        # === Calcolo e scrittura dei gradienti ===
+        for (r = 0; r < row_output; r++) {
+            for (j = 1; (r, j) in delta_val; j++) {
+                delta = delta_val[r, j]
+                line = ""
+                for (i = 1; (r, i) in input; i++) {
+                    grad = delta * input[r, i]
+                    if (debug) {
+                        printf "# GRAD r=%d j=%d i=%d delta=%.6f input=%.6f grad=%.6f\n", r, j, i, delta, input[r, i], grad > "/dev/stderr"
+                    }
+                    line = line sprintf("%f ", grad)
+                }
+                print line > gradient_output_file
+            }
+        }
+        close(gradient_output_file)
+    }
+}
+
