@@ -67,11 +67,12 @@ function validate_directory() {
 
 function check_awk_files() {
     local required_files=(
+	"utils-math.awk"
         "utils-activation.awk"
+        "utils-loss.awk"
         "utils-shared.awk"
         "utils-network.awk"
         "utils-forward.awk"
-        "utils-metrics.awk"
         "nnet-predict.awk"
     )
     
@@ -137,6 +138,7 @@ awk \
     -v num_inputs="$NUM_INPUTS" \
     -v model_dir="$MODEL_DIR" \
     -v num_layers="$NUM_LAYERS" \
+    -f "$LIB_DIR/utils-math.awk" \
     -f "$LIB_DIR/utils-activation.awk" \
     -f "$LIB_DIR/utils-shared.awk" \
     -f "$LIB_DIR/utils-network.awk" \

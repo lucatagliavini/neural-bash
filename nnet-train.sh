@@ -21,7 +21,11 @@ LIB_DIR="${SCRIPT_DIR}/lib/framework"
 # Parametri di default
 NUM_INPUTS=2
 NUM_LAYERS=2
-LEARNING_RATE=0.3
+OPTIMIZER="sgd"
+LEARNING_RATE=""
+LR_DECAY=""
+MOMENTUM=""
+LOSS_FUNCTION="mse"
 MAX_EPOCHS=1000
 PRINT_RESULT=0
 DEBUG_FLAGS=""
@@ -41,7 +45,12 @@ Positional Arguments:
 Options:
   --inputs N           Number of input features (default: 2)
   --layers N           Number of layers in the network (default: 2)
+  --optimizer OPT      Optimizer, sets the following parameter accordingly
+                       Values: sgd (default), sgd-momentum, sgd-momentum-decay
   --lr RATE            Learning rate (default: 0.3)
+  --lr-decay RATE      Learning rate decay (default: 0.0 means no decay) 
+  --loss LOSS          Loss function (default: mse) values: mse | ce
+  --momentum M         Momentum coefficient (default: 0.0)
   --epochs N           Maximum number of training epochs (default: 1000)
   --print-result       Print predictions after training
   --debug FLAG         Enable debug output (forward|backward|update|network|metrics|all)
@@ -78,13 +87,14 @@ function validate_directory() {
 
 function check_awk_files() {
     local required_files=(
+	    "utils-math.awk"
         "utils-activation.awk"
         "utils-shared.awk"
         "utils-network.awk"
         "utils-forward.awk"
         "utils-backward.awk"
         "utils-update.awk"
-        "utils-metrics.awk"
+        "utils-loss.awk"
         "nnet-train.awk"
     )
     
@@ -147,8 +157,24 @@ while [[ $# -gt 0 ]]; do
             NUM_LAYERS="$2"
             shift 2
             ;;
+        --optimizer)
+            OPTIMIZER="$2"
+            shift 2
+            ;;
         --lr)
             LEARNING_RATE="$2"
+            shift 2
+            ;;
+        --lr-decay)
+            LR_DECAY="$2"
+            shift 2
+            ;;
+        --loss)
+            LOSS_FUNCTION="$2"
+            shift 2
+            ;;
+        --momentum)
+            MOMENTUM="$2"
             shift 2
             ;;
         --epochs)
@@ -176,6 +202,32 @@ while [[ $# -gt 0 ]]; do
 done
 
 # ============================================================================
+# Applico l'OPTIMIZER:
+# ============================================================================
+case "${OPTIMIZER}" in
+    sgd)
+        : "${LEARNING_RATE:=0.3}"
+        : "${MOMENTUM:=0.0}"
+        : "${LR_DECAY:=0.0}"
+        ;;
+    sgd-momentum)
+        : "${LEARNING_RATE:=0.5}"
+        : "${MOMENTUM:=0.9}"
+        : "${LR_DECAY:=0.0}"
+        ;;
+    sgd-momentum-decay)
+        : "${LEARNING_RATE:=0.5}"
+        : "${MOMENTUM:=0.9}"
+        : "${LR_DECAY:=0.001}"
+        ;;
+    adam)
+        : "${LEARNING_RATE:=0.001}"
+        : "${MOMENTUM:=0.0}"     # ignorato
+        : "${LR_DECAY:=0.0}"
+        ;;
+esac
+
+# ============================================================================
 # VALIDAZIONE
 # ============================================================================
 
@@ -191,7 +243,8 @@ check_awk_files
 echo "[INFO] Starting training..."
 echo "[INFO] Dataset: $DATASET_FILE"
 echo "[INFO] Model: $MODEL_DIR"
-echo "[INFO] Parameters: inputs=$NUM_INPUTS, layers=$NUM_LAYERS, lr=$LEARNING_RATE, epochs=$MAX_EPOCHS"
+echo "[INFO] Parameters: inputs=$NUM_INPUTS, layers=$NUM_LAYERS, lr=$LEARNING_RATE, lr-decay=$LR_DECAY,
+                         loss=$LOSS_FUNCTION momentum=$MOMENTUM, epochs=$MAX_EPOCHS"
 echo ""
 
 # Esegui il training
@@ -200,17 +253,22 @@ awk \
     -v num_inputs="$NUM_INPUTS" \
     -v model_dir="$MODEL_DIR" \
     -v num_layers="$NUM_LAYERS" \
+    -v optimizer="$OPTIMIZER" \
     -v learning_rate="$LEARNING_RATE" \
+    -v lr_decay="$LR_DECAY" \
+    -v loss_function="$LOSS_FUNCTION" \
+    -v momentum="$MOMENTUM" \
     -v max_epochs="$MAX_EPOCHS" \
     -v print_result="$PRINT_RESULT" \
     $DEBUG_FLAGS \
+    -f "$LIB_DIR/utils-math.awk" \
     -f "$LIB_DIR/utils-activation.awk" \
+    -f "$LIB_DIR/utils-loss.awk" \
     -f "$LIB_DIR/utils-shared.awk" \
     -f "$LIB_DIR/utils-network.awk" \
     -f "$LIB_DIR/utils-forward.awk" \
     -f "$LIB_DIR/utils-backward.awk" \
     -f "$LIB_DIR/utils-update.awk" \
-    -f "$LIB_DIR/utils-metrics.awk" \
     -f "$LIB_DIR/nnet-train.awk" \
     /dev/null
 

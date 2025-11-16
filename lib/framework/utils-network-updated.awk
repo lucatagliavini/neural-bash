@@ -72,12 +72,12 @@ function create_layer(layer_file, activation_function, random_method, fan_in, fa
 		# Colonne (inputs)
 		for (col=1; col<=ncols; col++) {
 			# Gestiamo il fine riga:
-			if (col < ncols) line = line sprtinf("%.6f ", init_weight(random_method, fan_in, fan_out))
+			if (col < ncols) line = line sprintf("%.6f ", init_weight(random_method, fan_in, fan_out))
 			# Fine della riga (no spazio)
-			else line = line sprtinf("%.6f", init_weight(random_method, fan_in, fan_out))
+			else line = line sprintf("%.6f", init_weight(random_method, fan_in, fan_out))
 		}
 		# Stampo su file:
-		printf("%s\n") >> layer_file
+		printf("%s\n", line) >> layer_file
 	}
 }
 

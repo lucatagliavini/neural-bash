@@ -1,2 +1,0 @@
-ACTIVATION=sigmoid
--0.989682 -0.611882

@@ -23,7 +23,11 @@ function backward_pass(dataset_meta, dataset_targets, layer_meta, layer_weights,
 	# Estraiamo i dati di partenza:
 	num_samples = dataset_meta["num_samples"]
 	num_layers = layer_meta[0, 0, 0]
-
+	
+	# Tipo funzione di LOSS: [mse | ce] ce = Cross Entropy, mse = default
+	if (loss_function == "") {
+		loss_function = "mse"
+	}
 	
 	# STEP 1 - OUTPUT LAYER (calcolo differente da HIDDEN)
 	# Partenza da output layer:
@@ -40,20 +44,14 @@ function backward_pass(dataset_meta, dataset_targets, layer_meta, layer_weights,
 			# Prendiamo il TARGET:
 			target = dataset_targets[sample, neuron]
 
-			# Errore: (target - output)
-			error = target - output
-
-			# Calcoliamo la derivata della funzione di attivazione [DA OUTPUT]
-			d_activation = apply_activation_derivative(output, activation_function)
-
 			# Salvataggio dato in layer_deltas[layer, sample, neuron]
-			delta = error * d_activation
+			delta = compute_output_delta(output, target, activation_function, loss_function)
 			layer_deltas[layer_id, sample, neuron] = delta
 			
 			# Debug dettagliato:
 			logmesg(debug_backward, "[DEBUG] backward: OUT_LAYER sample=" sample \
-			" neuron=" neuron " target=" target " output=" output " error=" error \
-			" d_activation=" d_activation " delta=" delta "\n")
+			" neuron=" neuron " target=" target " output=" output \
+			" delta=" delta " loss=" loss_function "\n")
 		}
 		# Aggiornamento della matrice deltas:
 		layer_deltas[layer_id, sample, 0] = num_neurons	

@@ -26,6 +26,7 @@ fi
 ACTIVATION_FUNCTION="sigmoid"
 INIT_METHOD="xavier"
 SEED=""
+FORCE_OVERWRITE="false"
 
 function print_usage() {
     cat << EOF
@@ -43,6 +44,7 @@ Options:
   --method METHOD      Weight initialization method (default: xavier)
                        Available: xavier, he, random
   --seed N             Random seed for reproducibility (optional)
+  --force              Overwrite directory model if exists
   -h, --help           Show this help message
 
 Examples:
@@ -105,17 +107,27 @@ function validate_architecture() {
 function check_model_directory() {
     local model_dir="$1"
     
-    if [ -d "$model_dir" ]; then
-        echo "[WARNING] Directory $model_dir already exists." >&2
-        read -p "Overwrite? (y/N) " -n 1 -r
-        echo
-        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-            echo "[INFO] Initialization cancelled." >&2
-            exit 0
+    # Deve esistere la directory ma FORCE_OVERWRITE = FALSE!
+    if [ -d "$model_dir" ]
+    then
+        if [ "$FORCE_OVERWRITE" == "false" ]
+        then
+            echo "[WARNING] Directory $model_dir already exists." >&2
+            read -p "Overwrite? (y/N) " -n 1 -r
+            echo
+            if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+                echo "[INFO] Initialization cancelled." >&2
+                exit 0
+            fi
+            echo "[INFO] Backing up existing model to ${model_dir}.backup" >&2
+            rm -rf "${model_dir}.backup"
+            cp -r "$model_dir" "${model_dir}.backup" 2>/dev/null || true
+        else
+            # Siamo in FORCE OVERWRITE!
+            echo "[WARN] Force OVERWRITE of existing model dir: ${model_dir}"
+            rm -rf "${model_dir}.backup"
+            cp -r "$model_dir" "${model_dir}.backup" 2>/dev/null || true 
         fi
-        echo "[INFO] Backing up existing model to ${model_dir}.backup" >&2
-        rm -rf "${model_dir}.backup"
-        cp -r "$model_dir" "${model_dir}.backup" 2>/dev/null || true
     fi
 }
 
@@ -145,6 +157,10 @@ while [[ $# -gt 0 ]]; do
         --seed)
             SEED="$2"
             shift 2
+            ;;
+        --force)
+            FORCE_OVERWRITE="true"
+            shift 1
             ;;
         -h|--help)
             print_usage

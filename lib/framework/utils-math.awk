@@ -59,10 +59,9 @@ function init_he(fan_in, fan_out,    limit) {
     return rand() * 2 * limit - limit
 }
 
+################################################################################
 ### 3. Funzioni matematiche di supporto
-function clamp(x, min, max) {
-    return (x < min) ? min : (x > max) ? max : x
-}
+################################################################################
 
 # Normalizza un vettore in-place (usato per feature o pesi)
 function normalize_vector(v, n,    i, norm) {
