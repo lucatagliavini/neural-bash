@@ -16,13 +16,14 @@
 #
 
 # Esegue un singolo step di backward, una volta fatto il forward:
-function backward_pass(dataset_meta, dataset_targets, layer_meta, layer_weights, layer_output, layer_deltas,    
+function backward_pass(dataset_meta, dataset_targets, layer_meta, layer_weights, layer_output, layer_preactivation, layer_deltas, 
 			num_samples, num_layers, num_neurons, sample, layer_id, neuron, output, target, error, 
 			d_activation, activation_function, delta, num_neurons_next, layer_id_next, sum_error, 
-			neuron_next, weight_next, delta_next) {
+			neuron_next, weight_next, delta_next, ds_info, layer_info, next_layer_info) {
 	# Estraiamo i dati di partenza:
-	num_samples = dataset_meta["num_samples"]
-	num_layers = layer_meta[0, 0, 0]
+	get_dataset_info(dataset_meta, ds_info)
+	num_samples = ds_info["num_samples"]
+	num_layers = get_num_layers(layer_meta)
 	
 	# Tipo funzione di LOSS: [mse | ce] ce = Cross Entropy, mse = default
 	if (loss_function == "") {
@@ -32,8 +33,9 @@ function backward_pass(dataset_meta, dataset_targets, layer_meta, layer_weights,
 	# STEP 1 - OUTPUT LAYER (calcolo differente da HIDDEN)
 	# Partenza da output layer:
 	layer_id = num_layers
-	num_neurons = layer_meta[layer_id, "num_neurons"]
-	activation_function = layer_meta[layer_id, "activation"]
+	get_layer_info(layer_meta, layer_id, layer_info)
+	num_neurons = layer_info["num_neurons"]
+	activation_function = layer_info["activation"]
 	for (sample = 1; sample<=num_samples; sample++) {
 		
 		# Numero neuroni del layer attuale:
@@ -64,11 +66,14 @@ function backward_pass(dataset_meta, dataset_targets, layer_meta, layer_weights,
 	for (layer_id = num_layers-1; layer_id >= 1; layer_id--) {
 		layer_id_next = layer_id + 1
 
-		# Estraggo il numero neuroni del layer:
-		num_neurons = layer_meta[layer_id, "num_neurons"]
-		activation_function = layer_meta[layer_id, "activation"]
-		# Numero neuroni del NEXT_LAYER:
-		num_neurons_next = layer_meta[layer_id_next, "num_neurons"]
+		# Estraggo metadati del layer corrente:
+		get_layer_info(layer_meta, layer_id, layer_info)
+		num_neurons = layer_info["num_neurons"]
+		activation_function = layer_info["activation"]
+
+		# Metatadi del NEXT_LAYER:
+		get_layer_info(layer_meta, layer_id_next, next_layer_info)
+		num_neurons_next = next_layer_info["num_neurons"]
 
 		# Calcolo delta per ogni sample:		
 		for (sample=1; sample<=num_samples; sample++) {
@@ -89,7 +94,18 @@ function backward_pass(dataset_meta, dataset_targets, layer_meta, layer_weights,
 				# Fine neuron_next	
 
 				# Prendiamo l'output del neurone e calcoliamo la derivata:
-				output = layer_output[layer_id, sample, neuron]
+				# Caso GENERICO : output = layer_output[layer_id, sample, neuron]
+				# Scegliamo il valore corretto a seconda della funzione di ATTIVAZIONE:
+				output = 0.0
+				if (activation_function == "relu" || activation_function == "leaky_relu") {
+					# ReLU family: usa PRE-ACTIVATION
+					output = layer_preactivation[layer_id, sample, neuron]
+				}
+				else {
+					# Sigmoid/Tanh: usa POST-ACTIVATION
+					output = layer_output[layer_id, sample, neuron]
+				}
+				# Applico sempre la derivata:
 				d_activation = apply_activation_derivative(output, activation_function)
 			
 				# Calcolo del delta per neurone HIDDEN:

@@ -32,6 +32,7 @@ OPTIMIZER="sgd"
 LEARNING_RATE=""
 LR_DECAY=""
 MOMENTUM=""
+GRADIENT_CLIP="0.0"
 LOSS_FUNCTION="mse"
 MAX_EPOCHS=1000
 SAVE_MODEL=1
@@ -61,6 +62,7 @@ Training Options:
   --lr RATE            Learning rate (default: 0.3)
   --lr-decay RATE      Learning rate decay (default: 0.0 means no decay)
   --momentum M         Momentum coefficient (default: 0.0)
+  --gradient-clip G    Value of max/min gradient clipping, must be positive (default: 0.0) [with 0.0 means disabled]
   --epochs N           Maximum number of training epochs (default: 1000)
   --no-save            Don't save the model after training
   --loss               Function for LOSS, [mse = default], if sigmoid activation [ce = cross-entropy] is possibile
@@ -108,7 +110,7 @@ function validate_directory() {
 function check_awk_files() {
     local mode="$1"
     local required_files=(
-	    "utils-math.awk"
+	"utils-math.awk"
         "utils-activation.awk"
         "utils-shared.awk"
         "utils-network.awk"
@@ -182,6 +184,7 @@ function do_train() {
         -v lr_decay="$LR_DECAY" \
         -v loss_function="$LOSS_FUNCTION" \
         -v momentum="$MOMENTUM" \
+	-v gradient_clip="$GRADIENT_CLIP" \
         -v max_epochs="$MAX_EPOCHS" \
         -v save_model="$SAVE_MODEL" \
         -v print_result=1 \
@@ -291,6 +294,10 @@ while [[ $# -gt 0 ]]; do
             MOMENTUM="$2"
             shift 2
             ;;
+	--gradient-clip)
+	    GRADIENT_CLIP="$2"
+	    shift 2
+	    ;;
         --epochs)
             MAX_EPOCHS="$2"
             shift 2

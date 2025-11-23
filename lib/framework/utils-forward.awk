@@ -4,13 +4,15 @@
 #
 
 # Funzione che esegue il forward step:
-function forward_pass(dataset_meta, dataset_weights, num_layers, layer_meta, layer_weights, layer_output,    
+function forward_pass(dataset_meta, dataset_weights, layer_meta, layer_weights, layer_output, layer_preactivation,
 				layer_id, num_samples, sample, input, num_inputs, input_array, bias_index, 
-				activation_function, z, neuron, num_neurons, pred, num_outputs) {
+				activation_function, z, neuron, num_neurons, pred, num_outputs,
+				ds_info, layer_info, num_layers, output_layer_info) {
 	# Procediamo estraendo alcuni dati:	
-	num_samples = dataset_meta["num_samples"]
-	num_inputs = dataset_meta["num_inputs"]
-	num_outputs = dataset_meta["num_outputs"]
+	get_dataset_info(dataset_meta, ds_info)
+	num_samples = ds_info["num_samples"]
+	num_inputs = ds_info["num_inputs"]
+	num_outputs = ds_info["num_outputs"]
 
 	# Stampiamo tutti i parametri prelevati prima:
 	logmesg(debug_forward, "[DEBUG] forward: num_samples = "num_samples"\n")
@@ -27,15 +29,17 @@ function forward_pass(dataset_meta, dataset_weights, num_layers, layer_meta, lay
 		logmesg(debug_forward, "[DEBUG] forward: initialized input_array: "array_to_string(input_array)"\n")
 
 		# Ora dobbiamo ciclare su tutti i layer per procedere al forward pass:
+		num_layers = get_num_layers(layer_meta)
 		logmesg(debug_forward, "[DEBUG] forward: starting cycle on num_layers = "num_layers"\n")
 		for (layer_id=1; layer_id<=num_layers; layer_id++) {
 			# Forward pass on layer:
 			logmesg(debug_forward, "[DEBUG] forward: starting forward pass on layer = "layer_id"\n")
 
-			# Estraiamo la funzione di attivazione del layer:
-			activation_function = layer_meta[layer_id, "activation"]
-			num_neurons = layer_meta[layer_id, "num_neurons"]
-			num_inputs = layer_meta[layer_id, "num_inputs"]
+			# Estraiamo metadati del layer corrente:
+			get_layer_info(layer_meta, layer_id, layer_info)
+			activation_function = layer_info["activation"]
+			num_neurons = layer_info["num_neurons"]
+			num_inputs = layer_info["num_inputs"]
 			
 			# Stampiamo dati sul layer attuale:
 			logmesg(debug_forward, "[DEBUG] forward: layer"layer_id" activation_function = "activation_function"\n")
@@ -50,6 +54,9 @@ function forward_pass(dataset_meta, dataset_weights, num_layers, layer_meta, lay
 				for (input=1; input<=num_inputs; input++) {
 					z += (input_array[input] * layer_weights[layer_id, neuron, input])
 				}
+
+				# Per le funzioni ReLU e LeakyReLU dobbiamo salvare il valore di PRE-ATTIVAZIONE:
+				layer_preactivation[layer_id, sample, neuron] = z
 				
 				# Ora attiviamo:
 				layer_output[layer_id, sample, neuron] = apply_activation(z, activation_function)
@@ -58,21 +65,9 @@ function forward_pass(dataset_meta, dataset_weights, num_layers, layer_meta, lay
 			# Settiamo dimensione layer_output:
 			layer_output[layer_id, sample, 0] = num_neurons 
 
-			# STEP 2 - Preparazione degli inputs per layer NEXT 
-                        delete input_array
-                        for (neuron=1; neuron<=num_neurons; neuron++) {
-                        	# Copio gli output di questo layer nel successivo:
-                                input_array[neuron] = layer_output[layer_id, sample, neuron]
-                        }
+			# STEP 2 - Preparazione degli inputs per layer NEXT (con bias se necessario)
+			prepare_next_layer_input(layer_output, layer_id, sample, layer_meta, input_array)
 
-			# STEP 3 - Inseriamo il bias se il layer lo richiede. [AL MOMENTO SEMPRE]
-                        # Verifichiamo se dobbiamo inserire il bias (tipicamente sì)
-                        if (layer_meta[layer_id, "has_bias"]) {
-                        	bias_index = num_neurons +1
-                                input_array[bias_index] = 1.0
-                                # Aggiornamento dimensione:
-                                input_array[0] = bias_index
-                        }
                         # Verifichiamo se stampiamo gli input del nuovo layer:
                         logmesg(debug_forward, "[DEBUG] forward: inputs for NEXT_LAYER = "array_to_string(input_array)"\n")
 
@@ -92,11 +87,13 @@ function forward_pass(dataset_meta, dataset_weights, num_layers, layer_meta, lay
 	# Stampa OUTPUT:
 	if (print_result) {
 		# Stampiamo solo se richiesto:
+		num_layers = get_num_layers(layer_meta)
 		for (sample = 1; sample<=num_samples; sample++) {
 			printf("[RESULT] Sample %d -> pred = ", sample)
 
 			# Output dell'ultimo layer (con più neuroni in caso ce ne fossero)
-			num_neurons = layer_meta[num_layers, "num_neurons"]
+			get_layer_info(layer_meta, num_layers, output_layer_info)
+			num_neurons = output_layer_info[num_layers, "num_neurons"]
 			for (neuron = 1; neuron<=num_neurons; neuron++) {
 				pred = layer_output[num_layers, sample, neuron]
 				printf("%.6f ", pred)

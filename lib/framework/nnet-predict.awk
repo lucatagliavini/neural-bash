@@ -7,7 +7,7 @@ BEGIN {
 	printf("\n")
 
 	# Eseguo il forward pass per ottenere le predizioni:
-	forward_pass(dataset_meta, dataset_weights, num_layers, layer_meta, layer_weights, layer_output)
+	forward_pass(dataset_meta, dataset_weights, layer_meta, layer_weights, layer_output, layer_preactivation)
 
 	# Stampo le predizioni con formato dettagliato:
 	print_predictions(dataset_meta, dataset_targets, layer_meta, layer_output)

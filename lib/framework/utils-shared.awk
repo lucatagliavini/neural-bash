@@ -262,3 +262,110 @@ function load_dataset(dataset_file, num_inputs, dataset_meta, dataset_weights, d
 	# Ultimo step: chiusura file:
 	close(dataset_file)	
 }
+
+# ===============================================================================================
+# FUNZIONI HELPER PER METADATI
+# ===============================================================================================
+
+# Estrae metadati comuni del dataset in un array associativo
+# Uso: 	get_dataset_info(dataset_meta, info)
+# 	Poi si accede con: info["num_samples"], info["num_inputs"], info["num_outputs"]
+function get_dataset_info(dataset_meta, info) {
+	info["num_samples"] = dataset_meta["num_samples"]
+	info["num_inputs"] = dataset_meta["num_inputs"]
+	info["num_outputs"] = dataset_meta["num_outputs"]
+}
+
+
+# Estrae metadati di un layer specifico
+# Uso:	get_layer_info(layer_meta, 1, info)
+# 	Poi accedi con: info["num_neurons"], info["activation"], ecc...
+function get_layer_info(layer_meta, layer_id, info) {
+	info["num_neurons"] = layer_meta[layer_id, "num_neurons"]
+	info["num_inputs"] = layer_meta[layer_id, "num_inputs"]
+	info["activation"] = layer_meta[layer_id, "activation"]
+	info["has_bias"] = layer_meta[layer_id, "has_bias"]
+}
+
+
+# Restituisce il numero totale di layer della rete:
+# Uso: num_layers = get_num_layers(layer_meta)
+function get_num_layers(layer_meta) {
+	return layer_meta[0, 0, 0]
+}
+
+# ===============================================================================================
+# FUNZIONI HELPER PER FORWARD PASS
+# ===============================================================================================
+
+# Prepara l'array di input per il prossimo layer:
+# - Copia gli output del layer corrente
+# - Aggiunge bias se necessario
+# Restituisce il numero di elementi dell'array
+function prepare_next_layer_input(layer_output, layer_id, sample, layer_meta, input_array,
+				num_neurons, neuron, bias_index) {
+	
+	num_neurons = layer_meta[layer_id, "num_neurons"]
+
+	# Puliamo array precedente:
+	delete input_array
+
+	# Copia output come input per il prossimo layer:
+	for (neuron=1; neuron<=num_neurons; neuron++) {
+		input_array[neuron] = layer_output[layer_id, sample, neuron]
+	}
+
+	# Se richiesto dal layer aggiungiamo BIAS:
+	if (layer_meta[layer_id, "has_bias"]) {
+		bias_index = num_neurons + 1
+		input_array[bias_index] = 1.0
+		input_array[0] = bias_index
+	}
+	else {
+		input_array[0] = num_neurons
+	}
+
+	# Restituisco il numero di elementi:
+	return input_array[0]
+}
+
+# ===============================================================================================
+# FUNZIONI DI VALIDAZIONE
+# ===============================================================================================
+
+# Valida il nome della funzione di attivazione
+# Restituisce 1 se valida, 0 se non valida (con messaggio di errore)
+function validate_activation(activation) {
+	if (	activation == "sigmoid" || activation == "tanh" ||
+		activation == "relu" || activation == "leaky_relu") {
+		return 1
+	}
+	printf("[ERROR] Invalid activation: %s\n", activation) > "/dev/stderr"
+	printf("        Available: sigmoid, tanh, relu, leaky_relu\n") > "/dev/stderr"
+	return 0
+}
+
+
+# Validiamo il metodo di inizializzazione dei pesi
+# Restituisce 1 se valido, 0 se non valido (con messaggio di errore)
+function validate_init_method(method) {
+	if (method == "xavier" || method == "he" || method == "random") {
+		return 1
+	}
+	printf("[ERROR] Invalid init_method: %s\n", method) > "/dev/stderr"
+	printf("        Available: xavier, he, random\n") > "/dev/stderr"
+	return 0
+}
+
+
+# Validiamo la funzione di loss
+# Restituisce 1 se valida, 0 se non valida (con messaggio di errore)
+function validate_loss_function(loss_function) {
+	if (loss_function == "mse" || loss_function == "ce") {
+		return 1
+	}
+	printf("[ERROR] Invalid loss function: %s\n", loss_function) > "/dev/stderr"
+	printf("        Available: mse, ce\n") > "/dev/stderr"
+	return 0
+}
+

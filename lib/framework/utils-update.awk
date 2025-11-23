@@ -4,11 +4,11 @@
 
 # Funzione di update dei pesi dalla matrice delta:
 function update_pass(dataset_meta, dataset_weights, layer_meta, layer_weights, weight_velocity, layer_output, layer_deltas, 
-		learning_rate, optimizer, weight_m, weight_v, adam_beta1, adam_beta2, adam_eps, adam_beta1_t, adam_beta2_t,
+		learning_rate, gradient_clip, optimizer, weight_m, weight_v, adam_beta1, adam_beta2, adam_eps, adam_beta1_t, adam_beta2_t,
 
 		layer_id, layer_id_prev, num_samples, num_layers, num_inputs, neuron, sample, delta, gradient, 
 		input_id, input_value, weight_value, prev_v, new_v, m_prev, v_prev, m, vv, m_hat, v_hat,
-        t1_corr, t2_corr, denom) {
+        	t1_corr, t2_corr, denom) {
 	
 	# Recupero i dati necessari e loggo:
 	num_samples = dataset_meta["num_samples"]
@@ -19,6 +19,11 @@ function update_pass(dataset_meta, dataset_weights, layer_meta, layer_weights, w
 		logmesg(debug_update, "[WARN] update: momentum   = " momentum " > 1.0, training may be unstable\n")
 	}
 	logmesg(debug_update, "[DEBUG] update: optimizer     = " optimizer "\n")
+
+	# Se impostato stampiamo il gradient_clip:
+	if (gradient_clip != "" && gradient_clip > 0.0) {
+		logmesg(debug_update, "[DEBUG] update: gradient_clip = " gradient_clip "\n")
+	}
 
 	# Debug:
 	logmesg(debug_update, "[DEBUG] update: num_samples   = "num_samples"\n")	
@@ -70,6 +75,11 @@ function update_pass(dataset_meta, dataset_weights, layer_meta, layer_weights, w
 				# Calcoliamo la media:
 				gradient = gradient / num_samples
 
+				# Implementiamo il GRADIENT-CLIPPING:
+				if (gradient_clip != "" && gradient_clip > 0.0) {
+					gradient = clip_gradient(debug_update, gradient, gradient_clip)
+				}
+
 				# Aggiornamento del peso:
 				weight_value = layer_weights[layer_id, neuron, input_id]
 					
@@ -78,37 +88,37 @@ function update_pass(dataset_meta, dataset_weights, layer_meta, layer_weights, w
 				# ====================================================================================
 				if (optimizer == "adam") { # Ramo ADAM:
 					# -----------------------------
-                    # Adam optimizer per questo peso
-                    # -----------------------------
-                    # Momento precedente per questo peso
-                    m_prev = weight_m[layer_id, neuron, input_id]
-                    v_prev = weight_v[layer_id, neuron, input_id]
+                    			# Adam optimizer per questo peso
+                    			# -----------------------------
+                    			# Momento precedente per questo peso
+                    			m_prev = weight_m[layer_id, neuron, input_id]
+                    			v_prev = weight_v[layer_id, neuron, input_id]
 
-                    # Aggiorna m e v
-                    m = adam_beta1 * m_prev + (1 - adam_beta1) * gradient
-                    vv = adam_beta2 * v_prev + (1 - adam_beta2) * gradient * gradient
+                    			# Aggiorna m e v
+                    			m = adam_beta1 * m_prev + (1 - adam_beta1) * gradient
+                    			vv = adam_beta2 * v_prev + (1 - adam_beta2) * gradient * gradient
 
-                    # Salva nuovi momenti
-                    weight_m[layer_id, neuron, input_id] = m
-                    weight_v[layer_id, neuron, input_id] = vv
+                    			# Salva nuovi momenti
+                    			weight_m[layer_id, neuron, input_id] = m
+                    			weight_v[layer_id, neuron, input_id] = vv
 
-                    # Correzione del bias
-                    t1_corr = 1.0 - adam_beta1_t
-                    t2_corr = 1.0 - adam_beta2_t
+                    			# Correzione del bias
+                    			t1_corr = 1.0 - adam_beta1_t
+                    			t2_corr = 1.0 - adam_beta2_t
 
-                    # Per sicurezza evitiamo divisione per zero
-                    if (t1_corr <= 0) t1_corr = 1e-8
-                    if (t2_corr <= 0) t2_corr = 1e-8
+                    			# Per sicurezza evitiamo divisione per zero
+                    			if (t1_corr <= 0) t1_corr = 1e-8
+                    			if (t2_corr <= 0) t2_corr = 1e-8
 
-                    m_hat = m / t1_corr
-                    v_hat = vv / t2_corr
+                    			m_hat = m / t1_corr
+                    			v_hat = vv / t2_corr
 
-                    # Denominatore con eps
-                    denom = sqrt(v_hat) + adam_eps
-                    if (denom <= 0) denom = adam_eps
+                    			# Denominatore con eps
+                    			denom = sqrt(v_hat) + adam_eps
+                    			if (denom <= 0) denom = adam_eps
 
-                    # Update del peso
-                    layer_weights[layer_id, neuron, input_id] = weight_value - (learning_rate * m_hat / denom)
+                    			# Update del peso
+                    			layer_weights[layer_id, neuron, input_id] = weight_value - (learning_rate * m_hat / denom)
 
 					# Debug apprendimento:
 					logmesg(debug_update, "[DEBUG] update(adam-STUB): layer=" layer_id " neuron=" neuron \
@@ -130,9 +140,9 @@ function update_pass(dataset_meta, dataset_weights, layer_meta, layer_weights, w
 					layer_weights[layer_id, neuron, input_id] = weight_value + new_v
 
 					# Debug apprendimento con momentum
-                    logmesg(debug_update, "[DEBUG] update(momentum): layer=" layer_id " neuron=" neuron \
-                        " input=" input_id " weight_old=" weight_value " gradient=" gradient \
-                        " prev_vel=" prev_v " new_vel=" new_v " weight_new=" layer_weights[layer_id, neuron, input_id] "\n")
+                    			logmesg(debug_update, "[DEBUG] update(momentum): layer=" layer_id " neuron=" neuron \
+                        		" input=" input_id " weight_old=" weight_value " gradient=" gradient \
+                        		" prev_vel=" prev_v " new_vel=" new_v " weight_new=" layer_weights[layer_id, neuron, input_id] "\n")
 				}
 				else { # PLAIN SGD (comportamento senza momentum)
 					# Aggiornamento corretto del layer weight, con il "-" anziche' "+":

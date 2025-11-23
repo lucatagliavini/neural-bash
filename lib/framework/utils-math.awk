@@ -19,17 +19,31 @@ function clamp(value, min_value, max_value) {
 }
 
 #########################################################################
-# CLAMPING PESI DELLA MATRICE:
+# CLAMPING GRADIENT:
 #########################################################################
 
-# Dispatching:
-# Restituisce il peso clampato a seconda di come abbiamo deciso di farlo:
-function clamp_weight(weight_value, activation_function, num_inputs, clamp_mode,    limit, min_value, max_value) {
-	# Restituisco il weight non filtrato:
-	if (clamp_mode == "none") return weight_value
+# Restituisce il gradiente clampato:
+function clip_gradient(debug_update, gradient, gradient_clip) {
+	# Se max_value <= 0 --> Disabilitato quindi no clamping
+	if (gradient_clip <= 0.0) {
+		return gradient
+	}
 
-	
-	## TODO CLAMPING con funzione di act.	
+	# Clippa il MAX
+	if (gradient > gradient_clip) {
+		logmesg(debug_update, "[DEBUG] update: gradient = " + gradient " clipped to: " gradient_clip "\n")
+		return gradient_clip
+	}
+
+	# Clippa il MIN:
+	if (gradient < -gradient_clip) {
+		logmesg(debug_update, "[DEBUG] update: gradient = " + gradient " clipped to: " -gradient_clip "\n")
+		return -gradient_clip
+	}
+
+	# Altrimenti niente:
+	logmesg(debug_update, "[DEBUG] update: gradient = " gradient ", clipping not needed\n")
+	return gradient
 }
 
 
