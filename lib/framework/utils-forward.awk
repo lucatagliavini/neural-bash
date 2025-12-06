@@ -93,7 +93,7 @@ function forward_pass(dataset_meta, dataset_weights, layer_meta, layer_weights, 
 
 			# Output dell'ultimo layer (con più neuroni in caso ce ne fossero)
 			get_layer_info(layer_meta, num_layers, output_layer_info)
-			num_neurons = output_layer_info[num_layers, "num_neurons"]
+			num_neurons = output_layer_info["num_neurons"]
 			for (neuron = 1; neuron<=num_neurons; neuron++) {
 				pred = layer_output[num_layers, sample, neuron]
 				printf("%.6f ", pred)

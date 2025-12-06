@@ -57,7 +57,7 @@ function apply_activation_derivative(x, function_name) {
 #
 # Convenzione: error = output - target (coerente con update: w -= lr * gradient)
 #
-function compute_output_delta(output, target, activation, loss,    error, delta, d_activation) {
+function compute_output_delta(output, target, activation, loss, preactivation,    error, delta, d_activation, z) {
 	# Calcolo errore:
 	error = output - target
 
@@ -76,10 +76,20 @@ function compute_output_delta(output, target, activation, loss,    error, delta,
 	}
 	# Caso di fallback: MSE o funzione di loss non supportata:
 	loss = "mse"
-	d_activation = apply_activation_derivative(output, activation)
+
+	# CORREZIONE: Usa il valore corretto per la derivata
+	# ReLU family: usa PRE-ACTIVATION (z)
+	# Sigmoid/Tanh: usa POST-ACTIVATION (output)
+	if (activation == "relu" || activation == "leaky_relu") {
+		z = preactivation
+	} else {
+		z = output
+	}
+
+	d_activation = apply_activation_derivative(z, activation)
 	delta = (error * d_activation)
 	# Debug dettagliato:
-	logmesg(debug_backward, "[DEBUG] compute_output_delta: error=" error " delta=" delta " loss=" loss "\n")
+	logmesg(debug_backward, "[DEBUG] compute_output_delta: error=" error " d_activation=" d_activation " delta=" delta " loss=" loss "\n")
     return delta
 }
 

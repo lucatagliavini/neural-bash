@@ -1,0 +1,49 @@
+# Neural Network Models
+# Exclude all trained models to avoid repository bloat
+models/*/
+
+# Keep model directories structure but ignore layer files
+models/*/*.txt
+
+# Temporary files
+tmp/
+*.tmp
+*.log
+
+# Backup files
+*.backup
+*~
+.*.swp
+.*.swo
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE and editor files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Testing artifacts
+test-results/
+coverage/
+
+# Python cache (if any Python tools are used)
+__pycache__/
+*.pyc
+*.pyo
+
+# Keep example models for documentation
+!models/demo-*/
+!models/demo-*/*.txt
+
+# Keep dataset directory and files
+!dataset/
+!dataset/*.txt

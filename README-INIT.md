@@ -352,4 +352,17 @@ Prima di iniziare il training:
 
 ---
 
+## 🐛 Note sulla Versione 1.1
+
+La versione 1.1 include importanti correzioni al backpropagation che risolvono problemi con ReLU e altre funzioni di attivazione. Se hai modelli addestrati con versioni precedenti (< 1.1), ti consigliamo di ri-addestrali per ottenere risultati ottimali.
+
+**Modifiche principali**:
+- ✅ Corretto calcolo del delta per output layer con ReLU
+- ✅ MSE uniformato con fattore 0.5
+- ✅ Stampa predizioni durante training funzionante
+
+Per maggiori dettagli, vedi il [README principale](README.md#-bug-fix-e-miglioramenti-recenti).
+
+---
+
 **Pronto per inizializzare la tua neural network! 🎲**

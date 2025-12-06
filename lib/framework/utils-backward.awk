@@ -37,26 +37,30 @@ function backward_pass(dataset_meta, dataset_targets, layer_meta, layer_weights,
 	num_neurons = layer_info["num_neurons"]
 	activation_function = layer_info["activation"]
 	for (sample = 1; sample<=num_samples; sample++) {
-		
+
 		# Numero neuroni del layer attuale:
 		for (neuron=1; neuron<=num_neurons; neuron++) {
 			# Prendiamo il valore di output del neurone:
 			output = layer_output[layer_id, sample, neuron]
-			
+
+			# Prendiamo la pre-attivazione (necessaria per ReLU):
+			preactivation = layer_preactivation[layer_id, sample, neuron]
+
 			# Prendiamo il TARGET:
 			target = dataset_targets[sample, neuron]
 
 			# Salvataggio dato in layer_deltas[layer, sample, neuron]
-			delta = compute_output_delta(output, target, activation_function, loss_function)
+			# CORREZIONE: passiamo anche preactivation
+			delta = compute_output_delta(output, target, activation_function, loss_function, preactivation)
 			layer_deltas[layer_id, sample, neuron] = delta
-			
+
 			# Debug dettagliato:
 			logmesg(debug_backward, "[DEBUG] backward: OUT_LAYER sample=" sample \
 			" neuron=" neuron " target=" target " output=" output \
-			" delta=" delta " loss=" loss_function "\n")
+			" preactivation=" preactivation " delta=" delta " loss=" loss_function "\n")
 		}
 		# Aggiornamento della matrice deltas:
-		layer_deltas[layer_id, sample, 0] = num_neurons	
+		layer_deltas[layer_id, sample, 0] = num_neurons
 	}
 	# Salvo le righe del layer:
 	layer_deltas[layer_id, 0, 0] = num_samples

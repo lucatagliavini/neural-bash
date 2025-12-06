@@ -37,6 +37,7 @@ function compute_sample_loss(output, target, activation, loss,
     }
 
     # Fallback: MSE = 1/2 * (output - target)^2
+    # Nota: il fattore 0.5 semplifica la derivata durante backprop
     diff = output - target
     return (0.5 * diff * diff)
 }
@@ -113,24 +114,22 @@ function compute_mse(dataset_meta, dataset_targets, layer_meta, layer_output,
 	logmesg(debug_metrics, "[DEBUG] metrics: num_layers = "num_layers"\n")
 
 	# Inizializziamo la sommatoria:	
-    	sum_sq_error = 0
+    sum_sq_error = 0
 
 	# Per ogni sample calocliamo:
 	for (sample = 1; sample <= num_samples; sample++) {
-
-        	for (neuron = 1; neuron <= num_outputs; neuron++) {
-
+        for (neuron = 1; neuron <= num_outputs; neuron++) {
 			# Output del layer finale:
-            		output = layer_output[num_layers, sample, neuron]
+            output = layer_output[num_layers, sample, neuron]
 			# Target del dataset:
-            		target = dataset_targets[sample, neuron]
+            target = dataset_targets[sample, neuron]
 
 			# Sommiamo per la somma totale:
-            		sum_sq_error += (target - output) ^ 2
+            sum_sq_error += 0.5 * (target - output) ^ 2
 		}
-    	}
+    }
 
 	# Restituiamo un valore e non una matrice:
 	mse = sum_sq_error / (num_samples * num_outputs)
-    	return mse
+    return mse
 }

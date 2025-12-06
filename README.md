@@ -293,12 +293,43 @@ Prova a:
 - Modifica l'architettura della rete (più neuroni/layer)
 - Verifica il dataset per errori
 
+## 🐛 Bug Fix e Miglioramenti Recenti
+
+### Versione 1.1 (Dicembre 2024)
+
+**Correzioni Critiche**:
+
+1. **Fix: Calcolo Delta Output Layer con ReLU** ([utils-activation.awk:60](lib/framework/utils-activation.awk#L60))
+   - Problema: La funzione `compute_output_delta` usava sempre il valore post-attivazione per calcolare la derivata
+   - Impatto: Backpropagation errata con ReLU/Leaky ReLU
+   - Soluzione: Aggiunto parametro `preactivation` per usare il valore corretto:
+     - ReLU/Leaky ReLU → pre-attivazione (z)
+     - Sigmoid/Tanh → post-attivazione (y)
+
+2. **Fix: MSE Uniformato** ([utils-loss.awk:39](lib/framework/utils-loss.awk#L39))
+   - Problema: Incoerenza nel fattore 0.5 tra diverse funzioni MSE
+   - Soluzione: Uniformato uso di `0.5 * (y - t)²` per semplificare la derivata
+
+3. **Fix: Backward Pass per Output Layer** ([utils-backward.awk:47](lib/framework/utils-backward.awk#L47))
+   - Problema: Pre-attivazione non passata al calcolo del delta dell'output layer
+   - Soluzione: Aggiunta estrazione e passaggio di `preactivation`
+
+4. **Fix: Stampa Predizioni durante Training** ([utils-forward.awk:96](lib/framework/utils-forward.awk#L96))
+   - Problema: Accesso errato all'array `output_layer_info` con indice doppio
+   - Soluzione: Corretto accesso con chiave semplice `output_layer_info["num_neurons"]`
+
+**Validazione**:
+- ✅ Training con ReLU funzionante
+- ✅ Training con Sigmoid invariato
+- ✅ MSE converge correttamente
+- ✅ Predizioni stampate correttamente
+
 ## 🔮 Funzionalità Future
 
 Possibili estensioni del sistema:
 
-1. **Inizializzazione Pesi**: Implementare Xavier/He initialization
-2. **Ottimizzatori**: Adam, RMSprop, momentum
+1. ~~**Inizializzazione Pesi**: Implementare Xavier/He initialization~~ ✅ **IMPLEMENTATO**
+2. ~~**Ottimizzatori**: Adam, RMSprop, momentum~~ ✅ **IMPLEMENTATO**
 3. **Regolarizzazione**: L1/L2, dropout
 4. **Batch Processing**: Mini-batch gradient descent
 5. **Early Stopping**: Fermare il training automaticamente
@@ -324,5 +355,6 @@ Suggerimenti per miglioramenti:
 ---
 
 **Autore**: Luca Tagliavini
-**Versione**: 1.0-ALFA
-**Licenza**: Da specificare
+**Versione**: 1.1-STABLE
+**Licenza**: MIT (vedi [LICENSE](LICENSE))
+**Ultimo Aggiornamento**: Dicembre 2024
