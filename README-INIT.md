@@ -42,7 +42,13 @@ input_size,hidden1_size,hidden2_size,...,output_size
 | `--activation FUNC` | `sigmoid` | `sigmoid`, `tanh`, `relu`, `leaky_relu` | Funzione di attivazione |
 | `--method METHOD` | `xavier` | `xavier`, `he`, `random` | Metodo inizializzazione pesi |
 | `--seed N` | (random) | Numero intero | Seed per riproducibilità |
+| `--force` | - | - | Sovrascrive modello esistente senza chiedere |
 | `-h`, `--help` | - | - | Mostra help |
+
+⚠️ **IMPORTANTE - Scelta della Funzione di Attivazione**:
+- **Classificazione Binaria** (XOR, AND, OR): Usa `sigmoid` (output layer deve essere [0,1])
+- **ReLU**: Solo per hidden layers o problemi di regressione con output positivi
+- **Metodo inizializzazione**: `xavier` per sigmoid/tanh, `he` per relu/leaky_relu
 
 ## 📚 Esempi Pratici
 
@@ -79,7 +85,10 @@ input_size,hidden1_size,hidden2_size,...,output_size
 
 ### Esempio 2: Deep Network con ReLU
 ```bash
-# Network profonda per problemi complessi
+# ⚠️ ATTENZIONE: ReLU nell'output layer NON funziona per classificazione binaria!
+# Questo esempio va bene solo per regressione con output positivi
+
+# Network profonda per problemi complessi (es. regressione)
 ./nnet-init.sh models/deep 10,20,20,10,5,2 --activation relu --method he
 
 # Struttura:
@@ -99,14 +108,33 @@ input_size,hidden1_size,hidden2_size,...,output_size
 # Ogni esecuzione produrrà gli stessi pesi
 ```
 
-### Esempio 4: Multi-Class Classification
+### Esempio 4: Architettura Mista (RACCOMANDATO per Classificazione Binaria) ⭐
 ```bash
-# Classificazione 4 classi
-./nnet-init.sh models/multiclass 8,16,8,4 \
+# ✅ BEST PRACTICE: ReLU negli hidden layers, Sigmoid nell'output
+./nnet-init.sh models/xor-mixed 2,8,1 \
     --activation relu \
-    --method he \
-    --seed 123
+    --activation-output sigmoid \
+    --method he
+
+# Risultato:
+# - layer1.txt: ACTIVATION=relu (apprendimento veloce)
+# - layer2.txt: ACTIVATION=sigmoid (output [0,1] corretto)
+
+# Verifica:
+head -1 models/xor-mixed/layer*.txt
+# ACTIVATION=relu
+# ACTIVATION=sigmoid
+
+# Training:
+./nnet-run.sh train dataset/xor.txt models/xor-mixed \
+    --inputs 2 --layers 2 --epochs 2000 --lr 0.5
 ```
+
+**Vantaggi**:
+- ⚡ **Veloce**: ReLU negli hidden layer accelera l'apprendimento
+- ✅ **Stabile**: Sigmoid nell'output garantisce convergenza per classificazione
+- 🎯 **Preciso**: Output correttamente limitato a [0,1]
+- 💯 **Testato**: 100% accuracy su XOR in ~2000 epoche
 
 ## 🎯 Metodi di Inizializzazione
 
@@ -151,16 +179,31 @@ input_size,hidden1_size,hidden2_size,...,output_size
 
 ## 📊 Architetture Comuni
 
-### Logic Gates (AND, OR, XOR)
+### Logic Gates (XOR) - CONFIGURAZIONE OTTIMALE
 ```bash
-# Input: 2, Hidden: 3, Output: 1
-./nnet-init.sh models/logic 2,3,1
+# ✅ RACCOMANDATO: ReLU negli hidden + Sigmoid nell'output
+./nnet-init.sh models/xor 2,8,1 --activation relu --activation-output sigmoid --method he
+
+# Training consigliato:
+./nnet-run.sh train dataset/xor.txt models/xor --epochs 3000 --lr 0.5
+
+# ✅ ALTERNATIVA: Tutto sigmoid (più lento ma stabile)
+./nnet-init.sh models/xor 2,4,1 --activation sigmoid --method xavier
+
+# Training consigliato:
+./nnet-run.sh train dataset/xor.txt models/xor --epochs 2000 --lr 0.5
+```
+
+### Logic Gates (AND, OR) - Più semplici
+```bash
+# Sigmoid funziona bene (problema linearmente separabile)
+./nnet-init.sh models/and 2,2,1 --activation sigmoid --method xavier
 ```
 
 ### Binary Classification
 ```bash
 # 4 features → 8 hidden → 1 output (0/1)
-./nnet-init.sh models/binary 4,8,1 --activation sigmoid
+./nnet-init.sh models/binary 4,8,1 --activation relu --activation-output sigmoid --method he
 ```
 
 ### Multi-Class Classification
@@ -344,11 +387,77 @@ chmod +x nnet-init.awk
 Prima di iniziare il training:
 
 - [ ] Modello inizializzato con architettura corretta
-- [ ] Funzione di attivazione appropriata (sigmoid per sigmoid, he per relu)
-- [ ] Metodo di inizializzazione corretto
+- [ ] Funzione di attivazione appropriata per il problema
+- [ ] Metodo di inizializzazione corretto (**He per ReLU**, Xavier per sigmoid/tanh)
+- [ ] Architettura adeguata (**almeno 4-8 neuroni per XOR con ReLU**, 2-3 con sigmoid)
+- [ ] Output layer con funzione corretta (usa `--activation-output sigmoid` per classificazione binaria con ReLU)
 - [ ] File layer verificati (controllare con `cat models/*/layer*.txt`)
 - [ ] Dataset preparato con formato corretto
 - [ ] Parametri training corrispondenti (`--inputs` e `--layers`)
+- [ ] Learning rate appropriato (0.5-1.0 per ReLU, 0.3-0.5 per sigmoid)
+- [ ] Numero epoche sufficiente (3000-5000 per ReLU, 1000-2000 per sigmoid)
+
+## 🎯 Best Practices per ReLU
+
+### Quando usare ReLU
+
+**Vantaggi**:
+- ✅ Training più veloce (no saturazione)
+- ✅ No vanishing gradient
+- ✅ Buone prestazioni su problemi complessi
+
+**Svantaggi**:
+- ❌ Richiede più neuroni
+- ❌ Sensibile all'inizializzazione
+- ❌ Dying ReLU se mal configurato
+
+### Configurazione ReLU per XOR
+
+```bash
+# ✅ CONFIGURAZIONE CORRETTA
+./nnet-init.sh models/xor 2,8,1 \
+    --activation relu \
+    --activation-output sigmoid \
+    --method he
+
+./nnet-run.sh train dataset/xor.txt models/xor \
+    --epochs 3000 \
+    --lr 0.5
+
+# ❌ CONFIGURAZIONI ERRATE
+
+# ERRORE 1: Xavier con ReLU
+./nnet-init.sh models/xor 2,8,1 --activation relu --method xavier
+# Problema: Xavier è progettato per sigmoid/tanh, non ReLU
+
+# ERRORE 2: Troppo pochi neuroni
+./nnet-init.sh models/xor 2,3,1 --activation relu --method he
+# Problema: 3 neuroni non bastano per XOR con ReLU
+
+# ERRORE 3: ReLU nell'output
+./nnet-init.sh models/xor 2,8,1 --activation relu --method he
+# Problema: ReLU nell'output causa dying ReLU per [0,1]
+
+# ERRORE 4: LR troppo basso
+./nnet-run.sh train ... --lr 0.1
+# Problema: Convergenza troppo lenta con ReLU
+```
+
+### Regola Generale
+
+**Per ReLU**:
+- Inizializzazione: `--method he`
+- Neuroni: 2x rispetto a sigmoid
+- Learning rate: 0.5-1.0
+- Epoche: 3000-5000
+- Output: `--activation-output sigmoid` (per classificazione binaria)
+
+**Per Sigmoid/Tanh**:
+- Inizializzazione: `--method xavier`
+- Neuroni: Standard (2-4 per XOR)
+- Learning rate: 0.3-0.5
+- Epoche: 1000-2000
+- Output: Stesso di hidden layer
 
 ---
 

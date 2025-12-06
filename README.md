@@ -2,6 +2,8 @@
 
 Sistema completo per il training e la predizione di reti neurali implementato in AWK.
 
+**Versione**: 1.1-STABLE | [Changelog](CHANGELOG.md) | [Licenza MIT](LICENSE)
+
 ## 📁 Struttura del Progetto
 
 ```
@@ -260,14 +262,45 @@ awk \
 2. **Bias**: Il bias viene gestito automaticamente. Non includere una colonna bias nel dataset.
 
 3. **Funzioni di Attivazione**: Attualmente supportate:
-   - `sigmoid` (default)
+   - `sigmoid` (default) - **Raccomandato per output layer in classificazione binaria**
    - `tanh`
-   - `relu`
-   - `leaky_relu`
+   - `relu` - **Solo per hidden layers** ⚠️ **MAI nell'output layer**
+   - `leaky_relu` - **Hidden layers o output layer** (funziona ovunque)
+
+   ⚠️ **IMPORTANTE**: Per problemi di classificazione binaria (output [0,1]) come XOR, AND, OR:
+   - **Output Layer**: Usa `sigmoid` (consigliato), `tanh`, o `leaky_relu`
+   - **Hidden Layers**: Puoi usare `relu` o `leaky_relu`
+   - **MAI usare ReLU standard nell'output layer** (dying ReLU → nessun apprendimento)
+
+   **Configurazioni consigliate per XOR**:
+   ```bash
+   # ✅ CONFIGURAZIONE OTTIMALE: ReLU hidden + Sigmoid output
+   ./nnet-init.sh models/xor 2,8,1 --activation relu --activation-output sigmoid --method he
+   ./nnet-run.sh train dataset/xor.txt models/xor --epochs 3000 --lr 0.5
+
+   # ✅ ALTERNATIVA STABILE: Tutto sigmoid (più lento ma sempre converge)
+   ./nnet-init.sh models/xor 2,4,1 --activation sigmoid --method xavier
+   ./nnet-run.sh train dataset/xor.txt models/xor --epochs 5000 --lr 1.0
+
+   # ❌ CONFIGURAZIONE ERRATA: Pochi neuroni + Xavier con ReLU
+   ./nnet-init.sh models/xor 2,3,1 --activation relu --activation-output sigmoid --method xavier
+   # Non converge: troppo pochi neuroni, inizializzazione sbagliata
+   ```
+
+   **Best Practices per ReLU**:
+   - ✅ **Inizializzazione**: Usa **sempre He** (`--method he`) con ReLU, mai Xavier
+   - ✅ **Neuroni nascosti**: Almeno **4-8 neuroni** per XOR (vs 2-3 per sigmoid)
+   - ✅ **Learning rate**: Più alto (0.5-1.0) rispetto a sigmoid (0.3)
+   - ✅ **Epoche**: Più epoche (3000-5000) per convergenza completa
+   - ✅ **Output layer**: Usa **--activation-output sigmoid** per classificazione binaria
 
 4. **Learning Rate**: Valori tipici tra 0.01 e 1.0. Sperimenta per trovare il valore ottimale.
+   - **ReLU**: 0.5-1.0 (più alto)
+   - **Sigmoid/Tanh**: 0.3-0.5 (moderato)
 
 5. **Epoche**: Il training stampa l'MSE ogni 100 epoche per monitorare il progresso.
+   - **ReLU**: 3000-5000 epoche per convergenza completa
+   - **Sigmoid**: 1000-2000 epoche solitamente sufficienti
 
 ## 🐛 Troubleshooting
 
@@ -279,7 +312,40 @@ ls -la dataset/xor.txt
 ls -la models/xor/
 ```
 
-### MSE non converge
+### MSE non converge con ReLU
+
+**Sintomi**: Training con ReLU negli hidden layers converge molto lentamente o MSE rimane alto (>0.1).
+
+**Cause comuni**:
+1. **Inizializzazione sbagliata**: Stai usando Xavier invece di He
+2. **Troppo pochi neuroni**: ReLU richiede più neuroni di sigmoid (4-8 vs 2-3 per XOR)
+3. **Learning rate troppo basso**: ReLU funziona meglio con LR 0.5-1.0
+4. **Poche epoche**: ReLU richiede più tempo per convergere (3000-5000 epoche)
+
+**Soluzioni**:
+
+```bash
+# ❌ PROBLEMA: Configurazione non ottimale
+./nnet-init.sh models/xor 2,3,1 --activation relu --activation-output sigmoid --method xavier
+./nnet-run.sh train dataset/xor.txt models/xor --epochs 1000 --lr 0.3
+
+# ✅ SOLUZIONE: Configurazione ottimale per ReLU
+./nnet-init.sh models/xor 2,8,1 --activation relu --activation-output sigmoid --method he
+./nnet-run.sh train dataset/xor.txt models/xor --epochs 3000 --lr 0.5
+
+# ✅ ALTERNATIVA: Usa sigmoid se ReLU è problematico
+./nnet-init.sh models/xor 2,4,1 --activation sigmoid --method xavier
+./nnet-run.sh train dataset/xor.txt models/xor --epochs 2000 --lr 0.5
+```
+
+**Checklist per ReLU**:
+- ✅ Usa `--method he` (non xavier)
+- ✅ Almeno 4-8 neuroni nell'hidden layer
+- ✅ Learning rate 0.5-1.0
+- ✅ Almeno 3000 epoche
+- ✅ Usa `--activation-output sigmoid` per output layer
+
+### MSE non converge (generico)
 
 Prova a:
 - Aumentare il numero di epoche
@@ -292,6 +358,41 @@ Prova a:
 - Aumenta il numero di epoche
 - Modifica l'architettura della rete (più neuroni/layer)
 - Verifica il dataset per errori
+- Controlla che stai usando l'inizializzazione corretta (He per ReLU, Xavier per sigmoid)
+
+### MSE bloccato a 0.125-0.250 con predizioni costanti
+
+**Causa**: Stai usando **ReLU standard** nell'output layer per classificazione binaria.
+
+**Sintomi**:
+```
+[EPOCH 100] MSE = 0.250000 | LR = 0.300000 | LOSS(mse) = 0.250000
+[EPOCH 200] MSE = 0.250000 | LR = 0.300000 | LOSS(mse) = 0.250000
+...
+Predicted: 0.000000, 0.000000, 0.000000, 0.000000  (o tutti 1.0)
+```
+
+**Problema**: "Dying ReLU" - quando preactivation < 0, la derivata è 0 → nessun gradiente → nessun apprendimento
+
+**Soluzioni** (in ordine di preferenza):
+
+```bash
+# ✅ SOLUZIONE 1: Usa Sigmoid (raccomandato)
+sed -i 's/ACTIVATION=relu/ACTIVATION=sigmoid/' models/xor/layer2.txt
+
+# ✅ SOLUZIONE 2: Usa Leaky ReLU (funziona anche)
+sed -i 's/ACTIVATION=relu/ACTIVATION=leaky_relu/' models/xor/layer2.txt
+
+# ✅ SOLUZIONE 3: Reinizializza
+./nnet-init.sh models/xor 2,4,1 --activation sigmoid --force
+```
+
+**Spiegazione tecnica**:
+- **ReLU**: `f(x) = max(0, x)` → `f'(x) = 0` quando `x ≤ 0`
+  - Output bloccato a 0 → derivata 0 → nessun apprendimento
+- **Leaky ReLU**: `f(x) = max(0.01x, x)` → `f'(x) = 0.01` quando `x ≤ 0`
+  - Piccolo gradiente anche quando negativo → continua ad apprendere
+- **Sigmoid**: `f(x) = 1/(1+e^-x)` → output sempre in [0,1], gradiente mai 0
 
 ## 🐛 Bug Fix e Miglioramenti Recenti
 

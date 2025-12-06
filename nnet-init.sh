@@ -24,6 +24,7 @@ fi
 
 # Parametri di default
 ACTIVATION_FUNCTION="sigmoid"
+ACTIVATION_OUTPUT=""  # Se vuoto, usa ACTIVATION_FUNCTION
 INIT_METHOD="xavier"
 SEED=""
 FORCE_OVERWRITE="false"
@@ -39,26 +40,32 @@ Positional Arguments:
                        Example: 2,3,1 = 2 inputs, 3 hidden, 1 output
 
 Options:
-  --activation FUNC    Activation function (default: sigmoid)
-                       Available: sigmoid, tanh, relu, leaky_relu
-  --method METHOD      Weight initialization method (default: xavier)
-                       Available: xavier, he, random
-  --seed N             Random seed for reproducibility (optional)
-  --force              Overwrite directory model if exists
-  -h, --help           Show this help message
+  --activation FUNC         Activation function for ALL layers (default: sigmoid)
+                            Available: sigmoid, tanh, relu, leaky_relu
+  --activation-output FUNC  Activation function ONLY for output layer (optional)
+                            If specified, overrides --activation for the last layer
+                            Useful for mixed architectures (e.g., relu hidden + sigmoid output)
+  --method METHOD           Weight initialization method (default: xavier)
+                            Available: xavier, he, random
+  --seed N                  Random seed for reproducibility (optional)
+  --force                   Overwrite directory model if exists
+  -h, --help                Show this help message
 
 Examples:
   # XOR problem (2 inputs, 3 hidden, 1 output)
   $0 models/xor 2,3,1
 
-  # Custom network with ReLU and He initialization
+  # Mixed architecture: ReLU in hidden, Sigmoid in output (RECOMMENDED for classification)
+  $0 models/xor-mixed 2,8,1 --activation relu --activation-output sigmoid --method he
+
+  # Custom network with ReLU everywhere (for regression)
   $0 models/custom 4,8,8,2 --activation relu --method he
 
   # With reproducible seed
   $0 models/test 2,4,1 --seed 42
 
-  # Multi-layer deep network
-  $0 models/deep 10,20,20,10,5,2 --activation relu --method he
+  # Leaky ReLU everywhere (works for classification too)
+  $0 models/leaky 2,4,1 --activation leaky_relu --method he
 
 Architecture Examples:
   2,3,1       → XOR/simple logic gates (2 inputs, 3 hidden, 1 output)
@@ -150,6 +157,10 @@ while [[ $# -gt 0 ]]; do
             ACTIVATION_FUNCTION="$2"
             shift 2
             ;;
+        --activation-output)
+            ACTIVATION_OUTPUT="$2"
+            shift 2
+            ;;
         --method)
             INIT_METHOD="$2"
             shift 2
@@ -196,6 +207,19 @@ case "$ACTIVATION_FUNCTION" in
         ;;
 esac
 
+# Valida activation-output se specificata
+if [[ -n "$ACTIVATION_OUTPUT" ]]; then
+    case "$ACTIVATION_OUTPUT" in
+        sigmoid|tanh|relu|leaky_relu)
+            ;;
+        *)
+            echo "[ERROR] Invalid output activation function: $ACTIVATION_OUTPUT" >&2
+            echo "Available: sigmoid, tanh, relu, leaky_relu" >&2
+            exit 1
+            ;;
+    esac
+fi
+
 # Valida init method
 case "$INIT_METHOD" in
     xavier|he|random)
@@ -224,6 +248,11 @@ AWK_CMD="awk -f \"$AWK_SCRIPT\" \
     -v architecture=\"$ARCHITECTURE\" \
     -v activation=\"$ACTIVATION_FUNCTION\" \
     -v init_method=\"$INIT_METHOD\""
+
+# Aggiungi activation-output se specificata
+if [ -n "$ACTIVATION_OUTPUT" ]; then
+    AWK_CMD="$AWK_CMD -v activation_output=\"$ACTIVATION_OUTPUT\""
+fi
 
 # Aggiungi seed se fornito
 if [ -n "$SEED" ]; then

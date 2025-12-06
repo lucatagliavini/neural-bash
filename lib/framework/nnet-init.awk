@@ -15,8 +15,9 @@
 BEGIN {
     # Parametri di default
     if (activation == "") activation = "sigmoid"
+    if (activation_output == "") activation_output = activation  # Default: uguale a activation
     if (init_method == "") init_method = "xavier"
-    
+
     # Imposta seed se fornito
     if (seed != "") {
         srand(seed)
@@ -37,9 +38,17 @@ BEGIN {
     }
     
     # Valida activation function
-    if (activation != "sigmoid" && activation != "tanh" && 
+    if (activation != "sigmoid" && activation != "tanh" &&
         activation != "relu" && activation != "leaky_relu") {
         printf("[ERROR] Invalid activation: %s\n", activation) > "/dev/stderr"
+        printf("Available: sigmoid, tanh, relu, leaky_relu\n") > "/dev/stderr"
+        exit 1
+    }
+
+    # Valida activation_output
+    if (activation_output != "sigmoid" && activation_output != "tanh" &&
+        activation_output != "relu" && activation_output != "leaky_relu") {
+        printf("[ERROR] Invalid activation_output: %s\n", activation_output) > "/dev/stderr"
         printf("Available: sigmoid, tanh, relu, leaky_relu\n") > "/dev/stderr"
         exit 1
     }
@@ -100,12 +109,13 @@ BEGIN {
         total_weights += num_weights
         
         layer_file = model_dir "/layer" layer_id ".txt"
-        
-        printf("[INFO] Creating layer %d: %d neurons, %d inputs (%d weights)\n", 
+
+        printf("[INFO] Creating layer %d: %d neurons, %d inputs (%d weights)\n",
                layer_id, num_neurons, num_inputs, num_weights) > "/dev/stderr"
-        
-        # Scrivi header
-        printf("ACTIVATION=%s\n", activation) > layer_file
+
+        # Scrivi header: usa activation_output per l'ultimo layer, activation per gli altri
+        layer_activation = (layer_id == num_layers) ? activation_output : activation
+        printf("ACTIVATION=%s\n", layer_activation) > layer_file
         
         # Genera pesi
         for (neuron = 1; neuron <= num_neurons; neuron++) {
