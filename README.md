@@ -458,4 +458,4 @@ Suggerimenti per miglioramenti:
 **Autore**: Luca Tagliavini
 **Versione**: 1.1-STABLE
 **Licenza**: MIT (vedi [LICENSE](LICENSE))
-**Ultimo Aggiornamento**: Dicembre 2024
+**Ultimo Aggiornamento**: Dicembre 2025
