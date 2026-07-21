@@ -1,0 +1,5 @@
+tmp/
+models/*/best/
+models/*.backup/
+models/test-*/
+*.tmp
