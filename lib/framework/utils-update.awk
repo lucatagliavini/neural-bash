@@ -3,8 +3,9 @@
 #
 
 # Funzione di update dei pesi dalla matrice delta:
-function update_pass(dataset_meta, dataset_weights, layer_meta, layer_weights, weight_velocity, layer_output, layer_deltas, 
+function update_pass(dataset_meta, dataset_weights, layer_meta, layer_weights, weight_velocity, layer_output, layer_deltas,
 		learning_rate, optimizer, weight_m, weight_v, adam_beta1, adam_beta2, adam_eps, adam_beta1_t, adam_beta2_t,
+		grad_clip, weight_decay,
 
 		layer_id, layer_id_prev, num_samples, num_layers, num_neurons, num_inputs, neuron, sample, delta, gradient,
 		input_id, input_value, weight_value, prev_v, new_v, m_prev, v_prev, m, vv, m_hat, v_hat,
@@ -70,8 +71,17 @@ function update_pass(dataset_meta, dataset_weights, layer_meta, layer_weights, w
 				# Calcoliamo la media:
 				gradient = gradient / num_samples
 
-				# Aggiornamento del peso:
+				# Gradient clipping: limita la norma del singolo gradiente scalare
+				if (grad_clip > 0.0) {
+					if (gradient >  grad_clip) gradient =  grad_clip
+					if (gradient < -grad_clip) gradient = -grad_clip
+				}
+
+				# L2 weight decay: penalizza pesi grandi aggiungendo w*wd al gradiente
 				weight_value = layer_weights[layer_id, neuron, input_id]
+				if (weight_decay > 0.0) {
+					gradient += weight_decay * weight_value
+				}
 					
 				# ====================================================================================
 				# GESTIONE MOMENTUM e OPTIMIZER

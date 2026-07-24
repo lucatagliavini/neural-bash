@@ -38,4 +38,7 @@ _run_awk_unit "activation" "$TESTS_DIR/unit/test_activations.awk"
 suite_begin "Unit — utils-loss"
 _run_awk_unit "loss" "$TESTS_DIR/unit/test_loss.awk"
 
+suite_begin "Unit — softmax + CCE"
+_run_awk_unit "softmax" "$TESTS_DIR/unit/test_softmax.awk"
+
 suite_summary

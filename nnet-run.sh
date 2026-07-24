@@ -36,6 +36,14 @@ LOSS_FUNCTION="mse"
 MAX_EPOCHS=1000
 SAVE_MODEL=1
 USE_BEST_CHECKPOINT=0
+GRAD_CLIP=""
+WEIGHT_DECAY=""
+VAL_SPLIT="0"
+PATIENCE=""
+TASK="classification"
+NORMALIZE=0
+DROPOUT=0
+BATCH_SIZE=0
 
 # ============================================================================
 # FUNZIONI DI UTILITÀ
@@ -66,6 +74,14 @@ Training Options:
   --no-save            Don't save the model after training
   --use-best           Use the best checkpoint (model_dir/best/) instead of the live weights
   --loss               Function for LOSS, [mse = default], if sigmoid activation [ce = cross-entropy] is possibile
+  --task TASK          Task type: classification (default) or regression
+  --val-split N        Fraction of data for validation set (e.g. 0.2, default: 0)
+  --patience N         Early stopping: stop if val_mse doesn't improve for N epochs (requires --val-split)
+  --clip N             Gradient clipping threshold (default: disabled)
+  --wd N               L2 weight decay coefficient (default: 0.0)
+  --normalize          Normalize input features with z-score (mean=0, std=1) computed on training data
+  --dropout N          Dropout rate for hidden layers during training (e.g. 0.2, default: 0)
+  --batch-size N       Mini-batch size (default: 0 = full-batch); set to 2-N for mini-batch SGD
   --debug FLAG         Enable debug output (forward|backward|update|network|metrics|all)
 
 Prediction Options:
@@ -170,8 +186,8 @@ function do_train() {
     echo "[INFO] Starting training..."
     echo "[INFO] Dataset: $DATASET_FILE"
     echo "[INFO] Model: $MODEL_DIR"
-    echo "[INFO] Parameters: inputs=$NUM_INPUTS, layers=$NUM_LAYERS, lr=$LEARNING_RATE, lr-decay=$LR_DECAY,
-                             loss=$LOSS_FUNCTION, momentum=$MOMENTUM, epochs=$MAX_EPOCHS"
+    echo "[INFO] Parameters: inputs=$NUM_INPUTS, layers=$NUM_LAYERS, lr=$LEARNING_RATE, lr-decay=$LR_DECAY,"
+    echo "                   loss=$LOSS_FUNCTION, momentum=$MOMENTUM, epochs=$MAX_EPOCHS, clip=${GRAD_CLIP:-off}, wd=${WEIGHT_DECAY:-0}, batch=${BATCH_SIZE:-0}"
     echo ""
 
     awk \
@@ -187,6 +203,14 @@ function do_train() {
         -v max_epochs="$MAX_EPOCHS" \
         -v save_model="$SAVE_MODEL" \
         -v print_result=1 \
+        -v task="${TASK:-classification}" \
+        -v val_split="${VAL_SPLIT:-0}" \
+        -v patience="${PATIENCE:-0}" \
+        -v grad_clip="${GRAD_CLIP:-0}" \
+        -v weight_decay="${WEIGHT_DECAY:-0}" \
+        -v normalize="${NORMALIZE:-0}" \
+        -v dropout="${DROPOUT:-0}" \
+        -v batch_size="${BATCH_SIZE:-0}" \
         $DEBUG_FLAGS \
    	    -f "$LIB_DIR/utils-math.awk" \
         -f "$LIB_DIR/utils-activation.awk" \
@@ -201,6 +225,32 @@ function do_train() {
 
     echo ""
     echo "[INFO] Training completed!"
+
+    # Aggiorna model.conf con i metadati dell'ultima sessione di training
+    local meta_file="${MODEL_DIR}/.train_meta"
+    if [[ -f "$meta_file" ]]; then
+        local arch activation init_method
+        # Leggi valori esistenti da model.conf (potrebbero non esserci)
+        arch=$(       grep '^architecture=' "$MODEL_DIR/model.conf" 2>/dev/null | cut -d= -f2)
+        activation=$( grep '^activation='   "$MODEL_DIR/model.conf" 2>/dev/null | cut -d= -f2)
+        init_method=$(grep '^init_method='  "$MODEL_DIR/model.conf" 2>/dev/null | cut -d= -f2)
+        # Leggi i nuovi valori scritti da AWK
+        source "$meta_file"
+        cat > "$MODEL_DIR/model.conf" << CONFEOF
+architecture=${arch:-unknown}
+activation=${activation:-unknown}
+init_method=${init_method:-unknown}
+last_optimizer=${last_optimizer}
+last_lr=${last_lr}
+last_lr_decay=${last_lr_decay}
+last_momentum=${last_momentum}
+last_epochs=${last_epochs}
+last_loss=${last_loss}
+best_mse=${best_mse}
+best_epoch=${best_epoch}
+CONFEOF
+        rm -f "$meta_file"
+    fi
 }
 
 function do_predict() {
@@ -214,7 +264,8 @@ function do_predict() {
         -v num_inputs="$NUM_INPUTS" \
         -v model_dir="$MODEL_DIR" \
         -v num_layers="$NUM_LAYERS" \
- 	-f "$LIB_DIR/utils-math.awk" \
+        -v task="${TASK:-classification}" \
+        -f "$LIB_DIR/utils-math.awk" \
         -f "$LIB_DIR/utils-activation.awk" \
         -f "$LIB_DIR/utils-loss.awk" \
         -f "$LIB_DIR/utils-shared.awk" \
@@ -295,6 +346,38 @@ while [[ $# -gt 0 ]]; do
             ;;
         --epochs)
             MAX_EPOCHS="$2"
+            shift 2
+            ;;
+        --task)
+            TASK="$2"
+            shift 2
+            ;;
+        --val-split)
+            VAL_SPLIT="$2"
+            shift 2
+            ;;
+        --patience)
+            PATIENCE="$2"
+            shift 2
+            ;;
+        --clip)
+            GRAD_CLIP="$2"
+            shift 2
+            ;;
+        --wd)
+            WEIGHT_DECAY="$2"
+            shift 2
+            ;;
+        --normalize)
+            NORMALIZE=1
+            shift
+            ;;
+        --dropout)
+            DROPOUT="$2"
+            shift 2
+            ;;
+        --batch-size)
+            BATCH_SIZE="$2"
             shift 2
             ;;
         --no-save)

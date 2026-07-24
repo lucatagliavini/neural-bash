@@ -25,9 +25,29 @@ function apply_activation(x, function_name, alpha) {
 	else if (function_name == "tanh")	return f_tanh(x)
 	else if (function_name == "relu")	return f_relu(x)
 	else if (function_name == "leaky_relu")	return f_leaky_relu(x, alpha)
+	else if (function_name == "softmax")	return x  # softmax è vettoriale, applicata dopo
+	else if (function_name == "linear")	return x
 	else {
 		print "[WARNING]: Funzione di attivazione non trovata:", function_name, " - utilizzo della lineare" > "/dev/stderr"
 		return x
+	}
+}
+
+# Applica softmax in-place su layer_output[layer_id, sample, 1..num_neurons].
+# Sottrae il massimo per stabilità numerica (log-sum-exp trick).
+function apply_softmax(layer_output, layer_id, sample, num_neurons,    i, max_z, sum_exp, z) {
+	max_z = layer_output[layer_id, sample, 1]
+	for (i = 2; i <= num_neurons; i++) {
+		z = layer_output[layer_id, sample, i]
+		if (z > max_z) max_z = z
+	}
+	sum_exp = 0
+	for (i = 1; i <= num_neurons; i++) {
+		layer_output[layer_id, sample, i] = exp(layer_output[layer_id, sample, i] - max_z)
+		sum_exp += layer_output[layer_id, sample, i]
+	}
+	for (i = 1; i <= num_neurons; i++) {
+		layer_output[layer_id, sample, i] /= sum_exp
 	}
 }
 
@@ -40,6 +60,8 @@ function apply_activation_derivative(x, function_name, alpha) {
     else if (function_name == "tanh")       return d_tanh(x)
     else if (function_name == "relu")       return d_relu(x)
     else if (function_name == "leaky_relu") return d_leaky_relu(x, alpha)
+    else if (function_name == "softmax")    return 1.0  # delta già calcolato come (p-y) in compute_output_delta
+    else if (function_name == "linear")     return 1.0
     else {
         print "[WARNING]: Funzione di deattivazione non trovata:" , function_name, " - utilizzo della lineare" > "/dev/stderr"
         return 1.0
@@ -60,13 +82,23 @@ function apply_activation_derivative(x, function_name, alpha) {
 function compute_output_delta(output, target, activation, loss, alpha,    error, delta, d_activation) {
 	error = output - target
 
+	# Binary CE con sigmoid: delta = output - target (semplificazione analitica)
 	if (loss == "ce" && activation == "sigmoid") {
 		logmesg(debug_backward, "[DEBUG] compute_output_delta: error=" error " delta=" error " loss=" loss "\n")
 		return error
 	}
 
+	# Categorical CE con softmax: delta = output - target (stessa forma, derivata combinata CCE+softmax)
+	if (loss == "cce" && activation == "softmax") {
+		logmesg(debug_backward, "[DEBUG] compute_output_delta: error=" error " delta=" error " loss=cce\n")
+		return error
+	}
+
 	if (loss == "ce" && activation != "sigmoid") {
 		logmesg(debug_backward, "[WARN] CE richiesta ma activation=" activation " non supporta CE, uso MSE\n")
+	}
+	if (loss == "cce" && activation != "softmax") {
+		logmesg(debug_backward, "[WARN] CCE richiesta ma activation=" activation " non è softmax, uso MSE\n")
 	}
 	d_activation = apply_activation_derivative(output, activation, alpha)
 	delta = error * d_activation

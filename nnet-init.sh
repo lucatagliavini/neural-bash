@@ -24,6 +24,7 @@ fi
 
 # Parametri di default
 ACTIVATION_FUNCTION="sigmoid"
+HIDDEN_ACTIVATION=""   # se vuoto, uguale ad ACTIVATION_FUNCTION
 INIT_METHOD="xavier"
 SEED=""
 FORCE_OVERWRITE="false"
@@ -40,8 +41,9 @@ Positional Arguments:
                        Example: 2,3,1 = 2 inputs, 3 hidden, 1 output
 
 Options:
-  --activation FUNC    Activation function (default: sigmoid)
-                       Available: sigmoid, tanh, relu, leaky_relu
+  --activation FUNC    Output layer activation (default: sigmoid)
+                       Available: sigmoid, tanh, relu, leaky_relu, softmax
+  --hidden-act FUNC    Hidden layer activation (default: same as --activation)
   --alpha N            Leaky ReLU coefficient (default: 0.01, only used with leaky_relu)
   --method METHOD      Weight initialization method (default: xavier)
                        Available: xavier, he, random
@@ -152,6 +154,10 @@ while [[ $# -gt 0 ]]; do
             ACTIVATION_FUNCTION="$2"
             shift 2
             ;;
+        --hidden-act)
+            HIDDEN_ACTIVATION="$2"
+            shift 2
+            ;;
         --alpha)
             LEAKY_ALPHA="$2"
             shift 2
@@ -193,11 +199,11 @@ fi
 
 # Valida activation function
 case "$ACTIVATION_FUNCTION" in
-    sigmoid|tanh|relu|leaky_relu)
+    sigmoid|tanh|relu|leaky_relu|softmax|linear)
         ;;
     *)
         echo "[ERROR] Invalid activation function: $ACTIVATION_FUNCTION" >&2
-        echo "Available: sigmoid, tanh, relu, leaky_relu" >&2
+        echo "Available: sigmoid, tanh, relu, leaky_relu, softmax, linear" >&2
         exit 1
         ;;
 esac
@@ -234,6 +240,7 @@ AWK_CMD="awk -f \"$AWK_SCRIPT\" \
     -v model_dir=\"$MODEL_DIR\" \
     -v architecture=\"$ARCHITECTURE\" \
     -v activation=\"$ACTIVATION_FUNCTION\" \
+    -v hidden_activation=\"${HIDDEN_ACTIVATION:-$ACTIVATION_FUNCTION}\" \
     -v init_method=\"$INIT_METHOD\""
 
 # Aggiungi seed se fornito
@@ -271,6 +278,7 @@ fi
 cat > "$MODEL_DIR/model.conf" << EOF
 architecture=$ARCHITECTURE
 activation=$ACTIVATION_FUNCTION
+hidden_activation=${HIDDEN_ACTIVATION:-$ACTIVATION_FUNCTION}
 init_method=$INIT_METHOD
 EOF
 

@@ -36,6 +36,15 @@ function compute_sample_loss(output, target, activation, loss,
         return -(t * log(y) + (1.0 - t) * log(one_minus_y))
     }
 
+    # Categorical CE per softmax (multi-classe, one-hot target)
+    if (loss == "cce" && activation == "softmax") {
+        eps = 1e-15
+        if (output < eps) y = eps
+        else              y = output
+        # CCE = -t * log(p); per one-hot solo il neurone corretto conta
+        return -(target * log(y))
+    }
+
     # Fallback: MSE = 1/2 * (output - target)^2
     diff = output - target
     return (0.5 * diff * diff)

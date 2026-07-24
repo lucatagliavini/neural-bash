@@ -24,16 +24,16 @@
 # 
 
 # Carica la rete neurale:
-function load_nnetwork(dataset_file, num_inputs, model_dir, num_layers, dataset_meta, dataset_weights, dataset_targets, layer_meta, layer_weights,    
+function load_nnetwork(dataset_file, num_inputs, model_dir, num_layers, dataset_meta, dataset_weights, dataset_targets,
+			val_weights, val_targets, val_split,
+			layer_meta, layer_weights,
 			layer_id) {
-	# Le altre matrici serviranno poi durante l'algoritmo di forward STEP:
-	
-	# Primo:
 	logmesg(debug_network, "[DEBUG] nnetwork: dataset_file = " dataset_file"\n")
 	logmesg(debug_network, "[DEBUG] nnetwork: num_inputs = " num_inputs"\n")
 
-	# Caricamento dataset:
-	load_dataset(dataset_file, num_inputs, dataset_meta, dataset_weights, dataset_targets)
+	# Caricamento dataset con eventuale val split
+	load_dataset(dataset_file, num_inputs, dataset_meta, dataset_weights, dataset_targets,
+	             val_weights, val_targets, val_split)
 	
 	# Stampa solo se abbiamo valorizzato il flag.
 	logmesg(debug_network, "[DEBUG] nnetwork: dataset_meta matrix:\n")

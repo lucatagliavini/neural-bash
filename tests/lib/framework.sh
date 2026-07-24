@@ -148,7 +148,7 @@ assert_exit_fail() {
 assert_mse_below() {
     local name="$1" threshold="$2" output="$3"
     local mse
-    mse=$(echo "$output" | grep -oE "Mean Squared Error \(MSE\) : [0-9.]+" | grep -oE "[0-9.]+$" | head -1)
+    mse=$(echo "$output" | grep -oE "Mean Squared Error \(MSE\) +: [0-9.]+" | grep -oE "[0-9.]+$" | head -1)
     if [[ -z "$mse" ]]; then
         _fail "$name" "MSE non trovato nell'output"
         return

@@ -3,3 +3,4 @@ models/*/best/
 models/*.backup/
 models/test-*/
 *.tmp
+.train_meta

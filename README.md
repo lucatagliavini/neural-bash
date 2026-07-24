@@ -1,328 +1,214 @@
-# Neural Network in AWK - Guida Completa
+# neural-bash — Neural Network in AWK/Bash
 
-Sistema completo per il training e la predizione di reti neurali implementato in AWK.
+Framework completo per il training e l'inferenza di reti neurali, implementato interamente in AWK con wrapper Bash. Nessuna dipendenza esterna oltre a `gawk`.
 
-## 📁 Struttura del Progetto
+## Struttura del Progetto
 
 ```
 .
 ├── lib/framework/
-│   ├── utils-activation.awk    # Funzioni di attivazione (sigmoid, tanh, relu, leaky_relu)
-│   ├── utils-shared.awk         # Funzioni condivise (matrici, logging, I/O)
-│   ├── utils-network.awk        # Caricamento/salvataggio della rete
-│   ├── utils-forward.awk        # Forward pass
-│   ├── utils-backward.awk       # Backward pass (backpropagation)
-│   ├── utils-update.awk         # Update dei pesi (gradient descent)
-│   ├── utils-metrics.awk        # Metriche di valutazione (MSE, accuracy)
-│   ├── nnet-train.awk           # Script principale per il training
-│   └── nnet-predict.awk         # Script principale per la predizione
+│   ├── utils-math.awk          # Inizializzazione pesi (Xavier, He, uniform), Gaussian
+│   ├── utils-activation.awk    # sigmoid, tanh, relu, leaky_relu, softmax
+│   ├── utils-shared.awk        # Logging, I/O dataset, normalizzazione z-score, metriche
+│   ├── utils-network.awk       # Caricamento/salvataggio modello
+│   ├── utils-forward.awk       # Forward pass (con dropout)
+│   ├── utils-backward.awk      # Backpropagation
+│   ├── utils-update.awk        # SGD, Momentum, Adam, gradient clipping, weight decay
+│   ├── utils-loss.awk          # MSE, Cross-Entropy
+│   ├── nnet-train.awk          # Loop di training (mini-batch, early stopping, checkpoint)
+│   └── nnet-predict.awk        # Inferenza e metriche
 ├── dataset/
-│   ├── xor.txt                  # Dataset XOR
-│   ├── and.txt                  # Dataset AND
-│   └── or.txt                   # Dataset OR
+│   ├── xor.txt                 # XOR (2 input, 1 output, 4 campioni)
+│   ├── and.txt                 # AND
+│   ├── or.txt                  # OR
+│   ├── iris_toy.txt            # Iris subset (4 input, 3 classi one-hot, 45 campioni)
+│   └── sine_regression.txt     # sin(2πx) (1 input, 1 output, 30 campioni)
 ├── models/
-│   └── xor/                     # Modello XOR
-│       ├── layer1.txt           # Pesi del primo layer
-│       └── layer2.txt           # Pesi del secondo layer
-├── nnet-train.sh                # Script wrapper per training
-├── nnet-predict.sh              # Script wrapper per predizione
-└── nnet-run.sh                  # Script unificato (train/predict/eval)
+│   └── xor/                    # Modello XOR pre-addestrato
+├── tests/
+│   ├── run.sh                  # Orchestratore test suite (222 test)
+│   └── test_*.sh               # Dispatcher per categoria
+├── nnet-init.sh                # Inizializzazione rete
+└── nnet-run.sh                 # Train / predict / eval
 ```
 
-## 🚀 Quick Start
-
-### 1. Training di Base
+## Quick Start
 
 ```bash
-# Training con parametri di default
-./nnet-run.sh train dataset/xor.txt models/xor
+# 1. Inizializza una rete 2→8→1
+./nnet-init.sh models/xor 2,8,1 --activation sigmoid --method xavier
 
-# Training con parametri personalizzati
-./nnet-run.sh train dataset/xor.txt models/xor \
-    --epochs 2000 \
-    --lr 0.5 \
-    --inputs 2 \
-    --layers 2
-```
+# 2. Addestra
+./nnet-run.sh train dataset/xor.txt models/xor --epochs 3000 --lr 0.5
 
-### 2. Predizione
-
-```bash
-# Predizione con un modello già addestrato
+# 3. Predici
 ./nnet-run.sh predict dataset/xor.txt models/xor
+
+# 4. Addestra e valuta in un solo comando
+./nnet-run.sh eval dataset/xor.txt models/xor --epochs 3000
 ```
 
-### 3. Training + Valutazione
+## nnet-init.sh
 
 ```bash
-# Training seguito immediatamente dalla valutazione
-./nnet-run.sh eval dataset/xor.txt models/xor --epochs 1000
+./nnet-init.sh <model_dir> <architettura> [opzioni]
 ```
 
-## 📋 Formato dei Dataset
+| Opzione | Default | Descrizione |
+|---|---|---|
+| `--activation FUNC` | `sigmoid` | Attivazione per tutti i layer |
+| `--hidden-act FUNC` | (uguale a `--activation`) | Attivazione solo per i layer hidden; utile per separare hidden da output (es. sigmoid hidden + softmax output) |
+| `--method METHOD` | `xavier` | Metodo inizializzazione: `xavier`, `he`, `random` |
+| `--seed N` | (casuale) | Seed per riproducibilità |
+| `--force` | — | Sovrascrive senza chiedere conferma |
 
-I dataset devono essere file di testo con il seguente formato:
+**Attivazioni disponibili:** `sigmoid`, `tanh`, `relu`, `leaky_relu[:alpha]`, `softmax`, `linear`
+
+**Linee guida inizializzazione:**
+- `xavier` → con sigmoid / tanh
+- `he` → con relu / leaky_relu
+- `softmax` → solo layer di output per classificazione multi-classe
+
+```bash
+# Classificazione binaria
+./nnet-init.sh models/xor 2,8,1 --activation sigmoid --method xavier
+
+# Classificazione multi-classe (hidden sigmoid, output softmax)
+./nnet-init.sh models/iris 4,16,3 --activation softmax --hidden-act sigmoid --method xavier
+
+# Regressione (output lineare)
+./nnet-init.sh models/sine 1,16,1 --activation linear --hidden-act tanh --method xavier
+```
+
+## nnet-run.sh
+
+```bash
+./nnet-run.sh <comando> <dataset> <model_dir> [opzioni]
+```
+
+**Comandi:** `train`, `predict`, `eval` (train + predict in sequenza)
+
+### Opzioni di training
+
+| Flag | Default | Descrizione |
+|---|---|---|
+| `--lr RATE` | 0.3 | Learning rate |
+| `--epochs N` | 1000 | Numero massimo di epoche |
+| `--optimizer OPT` | `sgd` | `sgd`, `sgd-momentum`, `sgd-momentum-decay`, `adam` |
+| `--momentum M` | 0.0 | Coefficiente momentum |
+| `--lr-decay D` | 0.0 | Decay del learning rate per epoca |
+| `--loss FUNC` | `mse` | `mse`, `ce` (cross-entropy, solo con sigmoid/softmax) |
+| `--task TASK` | `classification` | `classification` o `regression` |
+| `--batch-size N` | 0 | Mini-batch size; 0 = full-batch gradient descent |
+| `--val-split F` | 0 | Frazione del dataset per validazione (es. `0.2`) |
+| `--patience N` | — | Early stopping: stop se val_mse non migliora per N epoche (richiede `--val-split`) |
+| `--normalize` | — | Normalizzazione z-score degli input (stats salvate in `normalize.conf`) |
+| `--dropout R` | 0 | Dropout rate sui layer hidden in training (inverted dropout) |
+| `--clip N` | — | Gradient clipping element-wise |
+| `--wd N` | 0 | L2 weight decay |
+| `--no-save` | — | Non salvare i pesi dopo il training |
+| `--use-best` | — | Carica il miglior checkpoint (`model_dir/best/`) invece dei pesi live |
+| `--debug FLAG` | — | `forward`, `backward`, `update`, `network`, `metrics`, `all` |
+
+### Preset optimizer
+
+| `--optimizer` | lr | momentum | lr-decay |
+|---|---|---|---|
+| `sgd` | 0.3 | 0.0 | 0.0 |
+| `sgd-momentum` | 0.5 | 0.9 | 0.0 |
+| `sgd-momentum-decay` | 0.5 | 0.9 | 0.001 |
+| `adam` | 0.001 | — | 0.0 |
+
+I valori possono essere sovrascritti con i flag espliciti (`--lr`, `--momentum`, ecc.).
+
+## Formato Dataset
 
 ```
-# Ogni riga rappresenta un campione
-# Le prime N colonne sono gli input
-# Le restanti colonne sono gli output attesi
-
-# Esempio: XOR (2 input, 1 output)
+# Commenti con #, righe vuote ignorate
+# colonne: input1 input2 ... output1 output2 ...
 0 0 0
 0 1 1
 1 0 1
 1 1 0
 ```
 
-**Nota importante:** Il bias viene aggiunto automaticamente dal sistema, non è necessario includerlo nel dataset.
+Il bias viene aggiunto automaticamente — non includerlo nel dataset.
 
-## 🏗️ Formato dei Modelli
+## Formato Modello
 
-Ogni layer è salvato in un file separato (`layer1.txt`, `layer2.txt`, ecc.):
+Ogni layer è un file `layer<N>.txt`:
 
 ```
 ACTIVATION=sigmoid
-0.500000 -0.300000 0.200000
--0.100000 0.400000 -0.250000
+0.512 -0.301  0.198   # pesi neurone 1 (ultimo = bias)
+-0.104  0.432 -0.255  # pesi neurone 2
 ```
 
-- La prima riga specifica la funzione di attivazione
-- Le righe successive contengono i pesi (una riga per neurone)
-- Ogni colonna rappresenta un peso per un input (incluso il bias come ultima colonna)
+`model.conf` tiene i metadati dell'ultima sessione di training (optimizer, lr, best_mse, best_epoch, ecc.). `normalize.conf` viene creato da `--normalize` con mean/std per feature. Il checkpoint migliore è sempre in `model_dir/best/`.
 
-## 🎯 Opzioni Disponibili
+## Esempi
 
-### Script Unificato (nnet-run.sh)
+### XOR (classificazione binaria)
 
 ```bash
-./nnet-run.sh <command> <dataset_file> <model_dir> [options]
-```
-
-**Comandi:**
-- `train`: Addestra una rete neurale
-- `predict`: Esegue predizioni con un modello addestrato
-- `eval`: Addestra e poi valuta il modello
-
-**Opzioni di Training:**
-- `--inputs N`: Numero di feature in input (default: 2)
-- `--layers N`: Numero di layer nella rete (default: 2)
-- `--lr RATE`: Learning rate (default: 0.3)
-- `--epochs N`: Numero massimo di epoche (default: 1000)
-- `--no-save`: Non salvare il modello dopo il training
-- `--debug FLAG`: Abilita output di debug
-
-**Flag di Debug Disponibili:**
-- `forward`: Debug del forward pass
-- `backward`: Debug del backward pass
-- `update`: Debug dell'aggiornamento pesi
-- `network`: Debug del caricamento rete
-- `metrics`: Debug delle metriche
-- `all`: Tutti i debug abilitati
-
-## 📊 Output del Training
-
-Durante il training, viene mostrato l'MSE (Mean Squared Error):
-
-```
-[INFO] train: num_epochs = 1000
-[EPOCH 1] MSE = 0.250000
-[EPOCH 100] MSE = 0.125432
-[EPOCH 200] MSE = 0.045678
-...
-[EPOCH 1000] MSE = 0.001234
-[INFO] train: saving updated weights to models/xor
-```
-
-Se abilitato con `--print-result`, mostra anche le predizioni finali:
-
-```
-============================================================
-FINAL PREDICTIONS
-============================================================
-[Sample 1] pred = 0.012345 | target = 0 | ✓
-[Sample 2] pred = 0.987654 | target = 1 | ✓
-[Sample 3] pred = 0.989012 | target = 1 | ✓
-[Sample 4] pred = 0.023456 | target = 0 | ✓
-============================================================
-```
-
-## 🔍 Output della Predizione
-
-Il comando `predict` mostra una tabella dettagliata:
-
-```
-================================================================================
-PREDICTIONS
-================================================================================
-Sample   | Predicted            | Target               | Status    
---------------------------------------------------------------------------------
-1        | 0.012345             | 0                    | ✓ CORRECT
-2        | 0.987654             | 1                    | ✓ CORRECT
-3        | 0.989012             | 1                    | ✓ CORRECT
-4        | 0.023456             | 0                    | ✓ CORRECT
-================================================================================
-
-EVALUATION METRICS
-================================================================================
-Mean Squared Error (MSE) : 0.001234
-Accuracy                  : 100.00% (4/4)
-================================================================================
-```
-
-## 🔧 Uso Avanzato
-
-### Training con Debug Completo
-
-```bash
-./nnet-run.sh train dataset/xor.txt models/xor \
-    --epochs 500 \
-    --lr 0.3 \
-    --debug all
-```
-
-### Uso Diretto degli Script AWK
-
-Se preferisci usare AWK direttamente:
-
-```bash
-# Training
-awk \
-    -v dataset_file="dataset/xor.txt" \
-    -v num_inputs=2 \
-    -v model_dir="models/xor" \
-    -v num_layers=2 \
-    -v learning_rate=0.3 \
-    -v max_epochs=1000 \
-    -v save_model=1 \
-    -v print_result=1 \
-    -f lib/framework/utils-activation.awk \
-    -f lib/framework/utils-shared.awk \
-    -f lib/framework/utils-network.awk \
-    -f lib/framework/utils-forward.awk \
-    -f lib/framework/utils-backward.awk \
-    -f lib/framework/utils-update.awk \
-    -f lib/framework/utils-metrics.awk \
-    -f lib/framework/nnet-train.awk \
-    /dev/null
-
-# Predizione
-awk \
-    -v dataset_file="dataset/xor.txt" \
-    -v num_inputs=2 \
-    -v model_dir="models/xor" \
-    -v num_layers=2 \
-    -f lib/framework/utils-activation.awk \
-    -f lib/framework/utils-shared.awk \
-    -f lib/framework/utils-network.awk \
-    -f lib/framework/utils-forward.awk \
-    -f lib/framework/utils-metrics.awk \
-    -f lib/framework/nnet-predict.awk \
-    /dev/null
-```
-
-## 🎓 Esempi Pratici
-
-### Esempio 1: Training XOR
-
-```bash
-# Training del problema XOR classico
-./nnet-run.sh train dataset/xor.txt models/xor \
-    --epochs 2000 \
-    --lr 0.5
-
-# Verifica risultati
+./nnet-init.sh models/xor 2,8,1 --activation sigmoid --seed 42
+./nnet-run.sh train dataset/xor.txt models/xor --epochs 3000 --lr 0.5
 ./nnet-run.sh predict dataset/xor.txt models/xor
 ```
 
-### Esempio 2: Training AND con Valutazione
+### Iris (multi-classe, softmax + CCE)
 
 ```bash
-./nnet-run.sh eval dataset/and.txt models/and \
-    --epochs 1000 \
-    --lr 0.3
+./nnet-init.sh models/iris 4,16,3 --activation softmax --hidden-act sigmoid --seed 1
+./nnet-run.sh train dataset/iris_toy.txt models/iris \
+    --epochs 1000 --optimizer adam --loss ce
 ```
 
-### Esempio 3: Training con Debug
+### Regressione seno
 
 ```bash
-# Debug solo del backward pass
-./nnet-run.sh train dataset/or.txt models/or \
-    --epochs 500 \
-    --lr 0.4 \
-    --debug backward
+./nnet-init.sh models/sine 1,16,1 --activation linear --hidden-act tanh --method xavier
+./nnet-run.sh train dataset/sine_regression.txt models/sine \
+    --epochs 3000 --optimizer adam --task regression --normalize
 ```
 
-## 📝 Note Importanti
+### Mini-batch SGD con early stopping
 
-1. **Salvataggio Automatico**: Per impostazione predefinita, i pesi vengono salvati automaticamente dopo il training. Usa `--no-save` per disabilitare.
-
-2. **Bias**: Il bias viene gestito automaticamente. Non includere una colonna bias nel dataset.
-
-3. **Funzioni di Attivazione**: Attualmente supportate:
-   - `sigmoid` (default)
-   - `tanh`
-   - `relu`
-   - `leaky_relu`
-
-4. **Learning Rate**: Valori tipici tra 0.01 e 1.0. Sperimenta per trovare il valore ottimale.
-
-5. **Epoche**: Il training stampa l'MSE ogni 100 epoche per monitorare il progresso.
-
-## 🐛 Troubleshooting
-
-### Errore: File not found
-
-Verifica che i path siano corretti e che i file esistano:
 ```bash
-ls -la dataset/xor.txt
-ls -la models/xor/
+./nnet-init.sh models/iris 4,16,3 --activation softmax --hidden-act sigmoid
+./nnet-run.sh train dataset/iris_toy.txt models/iris \
+    --epochs 2000 --optimizer adam --loss ce \
+    --batch-size 8 --val-split 0.2 --patience 50
 ```
 
-### MSE non converge
+### Dropout + normalizzazione
 
-Prova a:
-- Aumentare il numero di epoche
-- Modificare il learning rate (più alto o più basso)
-- Verificare il formato del dataset
-- Usare `--debug all` per identificare problemi
+```bash
+./nnet-run.sh train dataset/iris_toy.txt models/iris \
+    --epochs 1000 --optimizer adam \
+    --normalize --dropout 0.2
+```
 
-### Accuracy bassa
+## Test Suite
 
-- Aumenta il numero di epoche
-- Modifica l'architettura della rete (più neuroni/layer)
-- Verifica il dataset per errori
+```bash
+# Tutti i test (222 test, ~2 min)
+bash tests/run.sh
 
-## 🔮 Funzionalità Future
+# Solo una categoria
+bash tests/run.sh batch
+bash tests/run.sh dropout
+bash tests/run.sh multiclass
+```
 
-Possibili estensioni del sistema:
+Dispatcher disponibili: `unit`, `init`, `activations`, `optimizers`, `loss`, `checkpoint`, `pipeline`, `val_split`, `multiclass`, `metrics`, `normalize`, `dropout`, `batch`.
 
-1. **Inizializzazione Pesi**: Implementare Xavier/He initialization
-2. **Ottimizzatori**: Adam, RMSprop, momentum
-3. **Regolarizzazione**: L1/L2, dropout
-4. **Batch Processing**: Mini-batch gradient descent
-5. **Early Stopping**: Fermare il training automaticamente
-6. **Cross-Validation**: K-fold validation
-7. **Export/Import**: Formati standard (JSON, CSV)
+## Dipendenze
 
-## 📚 Risorse
-
-- Documentazione AWK: https://www.gnu.org/software/gawk/manual/
-- Neural Networks: https://www.deeplearningbook.org/
-- Backpropagation: http://neuralnetworksanddeeplearning.com/
-
-## 🤝 Contributi
-
-Suggerimenti per miglioramenti:
-
-1. Creare test automatizzati
-2. Aggiungere più funzioni di loss
-3. Implementare data augmentation
-4. Aggiungere visualizzazione dei risultati
-5. Supporto per dataset più grandi
+- `gawk` (GNU AWK)
+- `bash` 4+
+- `mkdir`, `ls` (Unix standard)
 
 ---
 
-**Autore**: Luca Tagliavini
-**Versione**: 1.0-ALFA
-**Licenza**: Da specificare
+**Autore:** Luca Tagliavini

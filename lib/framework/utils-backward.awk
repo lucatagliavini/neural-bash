@@ -17,6 +17,7 @@
 
 # Esegue un singolo step di backward, una volta fatto il forward:
 function backward_pass(dataset_meta, dataset_targets, layer_meta, layer_weights, layer_output, layer_deltas, loss_function,
+			dropout_mask,
 			num_samples, num_layers, num_neurons, sample, layer_id, neuron, output, target, error,
 			d_activation, activation_function, alpha, delta, num_neurons_next, layer_id_next, sum_error,
 			neuron_next, weight_next, delta_next) {
@@ -94,8 +95,12 @@ function backward_pass(dataset_meta, dataset_targets, layer_meta, layer_weights,
 				# Calcolo del delta per neurone HIDDEN:
 				delta = sum_error * d_activation
 
+				# Applica la dropout mask: i neuroni azzerati nel forward non propagano gradiente
+				if ((layer_id, sample, neuron) in dropout_mask)
+					delta *= dropout_mask[layer_id, sample, neuron]
+
 				# Salvataggio nella matrice:
-				layer_deltas[layer_id, sample, neuron] = delta	
+				layer_deltas[layer_id, sample, neuron] = delta
 
 				# Debug dettagliato:
 				logmesg(debug_backward, "[DEBUG] backward: HIDDEN layer=" layer_id \

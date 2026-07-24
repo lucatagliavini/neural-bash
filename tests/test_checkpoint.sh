@@ -58,8 +58,8 @@ _test_use_best() {
     assert_match "--use-best produce Accuracy" "Accuracy"           "$out_best"
 
     # Il best checkpoint deve essere <= live (best è il minimo storico)
-    mse_live=$(echo "$out_live" | grep -oE "Mean Squared Error \(MSE\) : [0-9.]+" | grep -oE "[0-9.]+$" | head -1)
-    mse_best=$(echo "$out_best" | grep -oE "Mean Squared Error \(MSE\) : [0-9.]+" | grep -oE "[0-9.]+$" | head -1)
+    mse_live=$(echo "$out_live" | grep -oE "Mean Squared Error \(MSE\) +: [0-9.]+" | grep -oE "[0-9.]+$" | head -1)
+    mse_best=$(echo "$out_best" | grep -oE "Mean Squared Error \(MSE\) +: [0-9.]+" | grep -oE "[0-9.]+$" | head -1)
     if [[ -n "$mse_live" && -n "$mse_best" ]]; then
         if awk "BEGIN { exit ($mse_best <= $mse_live + 1e-9) ? 0 : 1 }"; then
             _pass "--use-best MSE ($mse_best) <= live MSE ($mse_live)"

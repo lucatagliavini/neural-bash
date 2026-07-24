@@ -5,8 +5,10 @@
 
 # Funzione che esegue il forward step:
 function forward_pass(dataset_meta, dataset_weights, num_layers, layer_meta, layer_weights, layer_output,
+				apply_dropout, dropout_rate, dropout_mask,
 				layer_id, num_samples, sample, input, num_inputs, input_array, bias_index,
-				activation_function, alpha, z, neuron, num_neurons, pred, num_outputs) {
+				activation_function, alpha, z, neuron, num_neurons, pred, num_outputs,
+				keep_prob, mask) {
 	# Procediamo estraendo alcuni dati:	
 	num_samples = dataset_meta["num_samples"]
 	num_inputs = dataset_meta["num_inputs"]
@@ -51,15 +53,30 @@ function forward_pass(dataset_meta, dataset_weights, num_layers, layer_meta, lay
 				for (input=1; input<=num_inputs; input++) {
 					z += (input_array[input] * layer_weights[layer_id, neuron, input])
 				}
-				
-				# Ora attiviamo:
+
+				# Per softmax memorizza il logit grezzo; normalizzazione dopo il loop.
 				layer_output[layer_id, sample, neuron] = apply_activation(z, activation_function, alpha)
 				logmesg(debug_forward, "[DEBUG] forward: layer_output["layer_id", "sample", "neuron"] = "layer_output[layer_id, sample, neuron]"\n")
 			}
-			# Settiamo dimensione layer_output:
-			layer_output[layer_id, sample, 0] = num_neurons 
+			# STEP 1b - softmax: normalizza in-place l'intero vettore di output del layer
+			if (activation_function == "softmax") {
+				apply_softmax(layer_output, layer_id, sample, num_neurons)
+			}
 
-			# STEP 2 - Preparazione degli inputs per layer NEXT 
+			# STEP 1c - inverted dropout (solo hidden layer, solo in training)
+			if (apply_dropout && dropout_rate > 0.0 && layer_id < num_layers) {
+				keep_prob = 1.0 - dropout_rate
+				for (neuron = 1; neuron <= num_neurons; neuron++) {
+					mask = (rand() < keep_prob) ? 1 : 0
+					dropout_mask[layer_id, sample, neuron] = mask
+					layer_output[layer_id, sample, neuron] *= mask / keep_prob
+				}
+			}
+
+			# Settiamo dimensione layer_output:
+			layer_output[layer_id, sample, 0] = num_neurons
+
+			# STEP 2 - Preparazione degli inputs per layer NEXT
                         delete input_array
                         for (neuron=1; neuron<=num_neurons; neuron++) {
                         	# Copio gli output di questo layer nel successivo:
