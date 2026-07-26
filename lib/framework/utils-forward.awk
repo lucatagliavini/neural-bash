@@ -6,6 +6,7 @@
 # Funzione che esegue il forward step:
 function forward_pass(dataset_meta, dataset_weights, num_layers, layer_meta, layer_weights, layer_output,
 				apply_dropout, dropout_rate, dropout_mask,
+				layer_preact,
 				layer_id, num_samples, sample, input, num_inputs, input_array, bias_index,
 				activation_function, alpha, z, neuron, num_neurons, pred, num_outputs,
 				keep_prob, mask) {
@@ -54,6 +55,8 @@ function forward_pass(dataset_meta, dataset_weights, num_layers, layer_meta, lay
 					z += (input_array[input] * layer_weights[layer_id, neuron, input])
 				}
 
+				# Salva z pre-attivazione (serve a backward per relu/leaky_relu)
+				layer_preact[layer_id, sample, neuron] = z
 				# Per softmax memorizza il logit grezzo; normalizzazione dopo il loop.
 				layer_output[layer_id, sample, neuron] = apply_activation(z, activation_function, alpha)
 				logmesg(debug_forward, "[DEBUG] forward: layer_output["layer_id", "sample", "neuron"] = "layer_output[layer_id, sample, neuron]"\n")

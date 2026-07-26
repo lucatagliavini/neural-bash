@@ -138,17 +138,18 @@ BEGIN {
 				}
 
 				delete dropout_mask
+				delete layer_preact
 				forward_pass(batch_meta, batch_weights, num_layers, layer_meta, layer_weights, layer_output,
-				             (dropout > 0), dropout, dropout_mask)
+				             (dropout > 0), dropout, dropout_mask, layer_preact)
 				backward_pass(batch_meta, batch_targets, layer_meta, layer_weights, layer_output, layer_deltas, loss_function,
-				              dropout_mask)
+				              dropout_mask, layer_preact)
 				update_pass(batch_meta, batch_weights, layer_meta, layer_weights, weight_velocity, layer_output, layer_deltas, current_lr,
 				            optimizer, weight_m, weight_v, adam_beta1, adam_beta2, adam_eps, adam_beta1_t, adam_beta2_t,
 				            grad_clip, weight_decay)
 			}
 
 			# Forward completo sull'intero training set per calcolare MSE/loss dell'epoca
-			forward_pass(dataset_meta, dataset_weights, num_layers, layer_meta, layer_weights, layer_output, 0, 0, _dm)
+			forward_pass(dataset_meta, dataset_weights, num_layers, layer_meta, layer_weights, layer_output, 0, 0, _dm, _lp)
 
 		} else {
 			# Full-batch: comportamento originale
@@ -159,10 +160,11 @@ BEGIN {
 			}
 
 			delete dropout_mask
+			delete layer_preact
 			forward_pass(dataset_meta, dataset_weights, num_layers, layer_meta, layer_weights, layer_output,
-			             (dropout > 0), dropout, dropout_mask)
+			             (dropout > 0), dropout, dropout_mask, layer_preact)
 			backward_pass(dataset_meta, dataset_targets, layer_meta, layer_weights, layer_output, layer_deltas, loss_function,
-			              dropout_mask)
+			              dropout_mask, layer_preact)
 			update_pass(dataset_meta, dataset_weights, layer_meta, layer_weights, weight_velocity, layer_output, layer_deltas, current_lr,
 						optimizer, weight_m, weight_v, adam_beta1, adam_beta2, adam_eps, adam_beta1_t, adam_beta2_t,
 						grad_clip, weight_decay)
@@ -178,7 +180,7 @@ BEGIN {
 			val_meta["num_samples"] = dataset_meta["num_val_samples"]
 			val_meta["num_inputs"]  = dataset_meta["num_inputs"]
 			val_meta["num_outputs"] = dataset_meta["num_outputs"]
-			forward_pass(val_meta, val_weights, num_layers, layer_meta, layer_weights, val_output, 0, 0, _dm)
+			forward_pass(val_meta, val_weights, num_layers, layer_meta, layer_weights, val_output, 0, 0, _dm, _lp)
 			val_mse = compute_mse(val_meta, val_targets, layer_meta, val_output)
 		}
 
@@ -238,7 +240,7 @@ BEGIN {
 	# Stampo le predizioni finali se richiesto:
 	if (print_result == 1) {
 		# Riesegue il forward senza dropout per le metriche finali
-		forward_pass(dataset_meta, dataset_weights, num_layers, layer_meta, layer_weights, layer_output, 0, 0, _dm)
+		forward_pass(dataset_meta, dataset_weights, num_layers, layer_meta, layer_weights, layer_output, 0, 0, _dm, _lp)
 		printf("\n")
 		print_predictions(dataset_meta, dataset_targets, layer_meta, layer_output)
 		print_metrics(dataset_meta, dataset_targets, layer_meta, layer_output)

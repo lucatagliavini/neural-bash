@@ -51,9 +51,9 @@ BEGIN {
     # ---------------------------------------------------------------------------
     # Test compute_output_delta con CCE+softmax: delta = output - target
     # ---------------------------------------------------------------------------
-    check("delta cce+softmax p=0.8 t=1",   compute_output_delta(0.8, 1.0, "softmax", "cce"), -0.2)
-    check("delta cce+softmax p=0.1 t=0",   compute_output_delta(0.1, 0.0, "softmax", "cce"),  0.1)
-    check("delta cce+softmax p=0.5 t=0.5", compute_output_delta(0.5, 0.5, "softmax", "cce"),  0.0)
+    check("delta cce+softmax p=0.8 t=1",   compute_output_delta(0.0, 0.8, 1.0, "softmax", "cce"), -0.2)
+    check("delta cce+softmax p=0.1 t=0",   compute_output_delta(0.0, 0.1, 0.0, "softmax", "cce"),  0.1)
+    check("delta cce+softmax p=0.5 t=0.5", compute_output_delta(0.0, 0.5, 0.5, "softmax", "cce"),  0.0)
 
     # ---------------------------------------------------------------------------
     # Test compute_sample_loss con CCE

@@ -17,10 +17,10 @@
 
 # Esegue un singolo step di backward, una volta fatto il forward:
 function backward_pass(dataset_meta, dataset_targets, layer_meta, layer_weights, layer_output, layer_deltas, loss_function,
-			dropout_mask,
+			dropout_mask, layer_preact,
 			num_samples, num_layers, num_neurons, sample, layer_id, neuron, output, target, error,
 			d_activation, activation_function, alpha, delta, num_neurons_next, layer_id_next, sum_error,
-			neuron_next, weight_next, delta_next) {
+			neuron_next, weight_next, delta_next, preact) {
 	# Estraiamo i dati di partenza:
 	num_samples = dataset_meta["num_samples"]
 	num_layers = layer_meta[0, 0, 0]
@@ -44,7 +44,8 @@ function backward_pass(dataset_meta, dataset_targets, layer_meta, layer_weights,
 			target = dataset_targets[sample, neuron]
 
 			# Salvataggio dato in layer_deltas[layer, sample, neuron]
-			delta = compute_output_delta(output, target, activation_function, loss_function, alpha)
+			preact = layer_preact[layer_id, sample, neuron]
+			delta = compute_output_delta(preact, output, target, activation_function, loss_function, alpha)
 			layer_deltas[layer_id, sample, neuron] = delta
 			
 			# Debug dettagliato:
@@ -88,9 +89,10 @@ function backward_pass(dataset_meta, dataset_targets, layer_meta, layer_weights,
 				}
 				# Fine neuron_next	
 
-				# Prendiamo l'output del neurone e calcoliamo la derivata:
+				# Derivata: preact per relu/leaky_relu, postact (output) per sigmoid/tanh
+				preact = layer_preact[layer_id, sample, neuron]
 				output = layer_output[layer_id, sample, neuron]
-				d_activation = apply_activation_derivative(output, activation_function, alpha)
+				d_activation = apply_activation_derivative(preact, output, activation_function, alpha)
 			
 				# Calcolo del delta per neurone HIDDEN:
 				delta = sum_error * d_activation

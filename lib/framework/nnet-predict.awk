@@ -15,7 +15,7 @@ BEGIN {
 	printf("\n")
 
 	# Eseguo il forward pass per ottenere le predizioni (dropout disabilitato):
-	forward_pass(dataset_meta, dataset_weights, num_layers, layer_meta, layer_weights, layer_output, 0, 0, _dm)
+	forward_pass(dataset_meta, dataset_weights, num_layers, layer_meta, layer_weights, layer_output, 0, 0, _dm, _lp)
 
 	# Stampo le predizioni con formato dettagliato:
 	print_predictions(dataset_meta, dataset_targets, layer_meta, layer_output)

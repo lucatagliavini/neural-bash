@@ -52,14 +52,15 @@ function apply_softmax(layer_output, layer_id, sample, num_neurons,    i, max_z,
 }
 
 # Funzione per DERIVATIVE:
-# Nota:
-# - sigmoid, tanh 	: lavorano con l'output post-attivazione.
-# - relu e leaky_relu 	: lavorano con il valore pre-attivazione.
-function apply_activation_derivative(x, function_name, alpha) {
-	if (function_name == "sigmoid")         return d_sigmoid(x)
-    else if (function_name == "tanh")       return d_tanh(x)
-    else if (function_name == "relu")       return d_relu(x)
-    else if (function_name == "leaky_relu") return d_leaky_relu(x, alpha)
+# Riceve sia preact (z, pre-attivazione) che postact (a, post-attivazione).
+# Ogni derivata usa il valore matematicamente corretto:
+# - sigmoid, tanh    : usano postact (derivata espressa in termini di f(z), più efficiente)
+# - relu, leaky_relu : usano preact  (segno di z determina la derivata)
+function apply_activation_derivative(preact, postact, function_name, alpha) {
+	if (function_name == "sigmoid")         return d_sigmoid(postact)
+    else if (function_name == "tanh")       return d_tanh(postact)
+    else if (function_name == "relu")       return d_relu(preact)
+    else if (function_name == "leaky_relu") return d_leaky_relu(preact, alpha)
     else if (function_name == "softmax")    return 1.0  # delta già calcolato come (p-y) in compute_output_delta
     else if (function_name == "linear")     return 1.0
     else {
@@ -79,7 +80,7 @@ function apply_activation_derivative(x, function_name, alpha) {
 #
 # Convenzione: error = output - target (coerente con update: w -= lr * gradient)
 #
-function compute_output_delta(output, target, activation, loss, alpha,    error, delta, d_activation) {
+function compute_output_delta(preact, output, target, activation, loss, alpha,    error, delta, d_activation) {
 	error = output - target
 
 	# Binary CE con sigmoid: delta = output - target (semplificazione analitica)
@@ -100,7 +101,7 @@ function compute_output_delta(output, target, activation, loss, alpha,    error,
 	if (loss == "cce" && activation != "softmax") {
 		logmesg(debug_backward, "[WARN] CCE richiesta ma activation=" activation " non è softmax, uso MSE\n")
 	}
-	d_activation = apply_activation_derivative(output, activation, alpha)
+	d_activation = apply_activation_derivative(preact, output, activation, alpha)
 	delta = error * d_activation
 	logmesg(debug_backward, "[DEBUG] compute_output_delta: error=" error " delta=" delta " loss=" loss "\n")
 	return delta
