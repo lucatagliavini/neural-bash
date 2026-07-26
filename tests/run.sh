@@ -42,9 +42,10 @@ declare -A DISPATCHERS=(
     [normalize]="$TESTS_DIR/test_normalize.sh"
     [dropout]="$TESTS_DIR/test_dropout.sh"
     [batch]="$TESTS_DIR/test_batch.sh"
+    [search]="$TESTS_DIR/test_search.sh"
 )
 
-DISPATCHER_ORDER=(unit init activations optimizers loss checkpoint pipeline val_split multiclass metrics normalize dropout batch)
+DISPATCHER_ORDER=(unit init activations optimizers loss checkpoint pipeline val_split multiclass metrics normalize dropout batch search)
 
 # ============================================================================
 # Selezione dispatcher

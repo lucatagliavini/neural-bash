@@ -221,19 +221,20 @@ BEGIN {
 	if (save_model == "" || save_model == 1) {
 		printf("[INFO] train: saving updated weights to %s\n", model_dir)
 		save_nnetwork(model_dir, num_layers, layer_meta, layer_weights)
-
-		# Scrivi metadati sessione per aggiornare model.conf dal wrapper Bash
-		meta_file = model_dir "/.train_meta"
-		printf("last_optimizer=%s\n", optimizer)                     > meta_file
-		printf("last_lr=%.8g\n",      base_learning_rate)           >> meta_file
-		printf("last_lr_decay=%.8g\n", lr_decay)                    >> meta_file
-		printf("last_momentum=%.8g\n", momentum)                    >> meta_file
-		printf("last_epochs=%d\n",     max_epochs)                  >> meta_file
-		printf("last_loss=%s\n",       loss_function)               >> meta_file
-		printf("best_mse=%.8g\n",      best_mse)                    >> meta_file
-		printf("best_epoch=%d\n",      best_epoch)                  >> meta_file
-		close(meta_file)
 	}
+
+	# Scrivi sempre i metadati di sessione (usati da nnet-run.sh per model.conf
+	# e da nnet-search.sh anche con --no-save)
+	meta_file = model_dir "/.train_meta"
+	printf("last_optimizer=%s\n", optimizer)                     > meta_file
+	printf("last_lr=%.8g\n",      base_learning_rate)           >> meta_file
+	printf("last_lr_decay=%.8g\n", lr_decay)                    >> meta_file
+	printf("last_momentum=%.8g\n", momentum)                    >> meta_file
+	printf("last_epochs=%d\n",     max_epochs)                  >> meta_file
+	printf("last_loss=%s\n",       loss_function)               >> meta_file
+	printf("best_mse=%.8g\n",      best_mse)                    >> meta_file
+	printf("best_epoch=%d\n",      best_epoch)                  >> meta_file
+	close(meta_file)
 
 	printf("[INFO] train: best MSE = %.6f (epoch %d) → saved in %s\n", best_mse, best_epoch, best_checkpoint_dir)
 
