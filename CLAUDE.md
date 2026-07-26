@@ -103,6 +103,7 @@ w1 w2 ... bias
 
 ## Dependencies
 
-- `gawk` (GNU AWK recommended for full compatibility)
+- `gawk` (richiesto — usato ovunque, disponibile su Linux, WSL e AIX)
 - `bash`
-- Standard Unix tools (`mkdir`, `ls`)
+- `gunzip` (per lettura trasparente di log `.gz` in neural-log-analyzer)
+- Standard Unix tools (`mkdir`, `ls`, `find`, `sort`)
