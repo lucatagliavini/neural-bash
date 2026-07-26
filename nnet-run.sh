@@ -50,6 +50,12 @@ SEED=""
 # FUNZIONI DI UTILITÀ
 # ============================================================================
 
+# Legge il valore di una chiave da un file key=value.
+# Uso: read_conf_key <file> <chiave>
+function read_conf_key() {
+    grep "^$2=" "$1" 2>/dev/null | cut -d= -f2
+}
+
 function print_usage() {
     cat << EOF
 Usage: $0 <command> <dataset_file> <model_dir> [options]
@@ -234,9 +240,9 @@ function do_train() {
     if [[ -f "$meta_file" ]]; then
         local arch activation init_method
         # Leggi valori esistenti da model.conf (potrebbero non esserci)
-        arch=$(       grep '^architecture=' "$MODEL_DIR/model.conf" 2>/dev/null | cut -d= -f2)
-        activation=$( grep '^activation='   "$MODEL_DIR/model.conf" 2>/dev/null | cut -d= -f2)
-        init_method=$(grep '^init_method='  "$MODEL_DIR/model.conf" 2>/dev/null | cut -d= -f2)
+        arch=$(       read_conf_key "$MODEL_DIR/model.conf" architecture)
+        activation=$( read_conf_key "$MODEL_DIR/model.conf" activation)
+        init_method=$(read_conf_key "$MODEL_DIR/model.conf" init_method)
         # Leggi i nuovi valori scritti da AWK
         source "$meta_file"
         cat > "$MODEL_DIR/model.conf" << CONFEOF

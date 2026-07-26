@@ -102,12 +102,9 @@ BEGIN {
 		}
 
 		if (use_minibatch) {
-			# Shuffle Fisher-Yates degli indici 1..n_train
+			# Shuffle degli indici 1..n_train per questo epoca
 			for (_i = 1; _i <= n_train; _i++) _perm[_i] = _i
-			for (_i = n_train; _i >= 2; _i--) {
-				_j = int(rand() * _i) + 1
-				_tmp = _perm[_i]; _perm[_i] = _perm[_j]; _perm[_j] = _tmp
-			}
+			fisher_yates_shuffle(_perm, n_train)
 
 			# Loop sui mini-batch
 			for (_b_start = 1; _b_start <= n_train; _b_start += eff_batch) {

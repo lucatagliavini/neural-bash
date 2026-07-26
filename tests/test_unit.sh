@@ -9,7 +9,7 @@ source "$(dirname "$0")/lib/framework.sh"
 _run_awk_unit() {
     local label="$1" awk_file="$2"
     local output
-    output=$(gawk \
+    output=$(awk \
         -f "$AWK_LIB/utils-math.awk" \
         -f "$AWK_LIB/utils-activation.awk" \
         -f "$AWK_LIB/utils-loss.awk" \

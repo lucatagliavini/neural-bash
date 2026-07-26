@@ -197,23 +197,23 @@ cleanup_tmp() {
 # Esegue un forward AWK puro per test unitari di singole funzioni.
 # Uso: awk_eval <espressione_awk>  →  restituisce il valore su stdout
 awk_eval() {
-    gawk -f "$AWK_LIB/utils-math.awk" \
-         -f "$AWK_LIB/utils-activation.awk" \
-         -f "$AWK_LIB/utils-loss.awk" \
-         -f "$AWK_LIB/utils-shared.awk" \
-         -v expr="$1" \
-         'BEGIN { printf "%.10g\n", eval(expr) }' \
-         /dev/null 2>/dev/null
+    awk -f "$AWK_LIB/utils-math.awk" \
+        -f "$AWK_LIB/utils-activation.awk" \
+        -f "$AWK_LIB/utils-loss.awk" \
+        -f "$AWK_LIB/utils-shared.awk" \
+        -v expr="$1" \
+        'BEGIN { printf "%.10g\n", eval(expr) }' \
+        /dev/null 2>/dev/null
 }
 
 # Esegue AWK con tutti i moduli e un programma inline.
 # Uso: awk_run <programma_awk>
 awk_run() {
     local prog="$1"
-    gawk -f "$AWK_LIB/utils-math.awk" \
-         -f "$AWK_LIB/utils-activation.awk" \
-         -f "$AWK_LIB/utils-loss.awk" \
-         -f "$AWK_LIB/utils-shared.awk" \
-         "BEGIN { $prog }" \
-         /dev/null 2>/dev/null
+    awk -f "$AWK_LIB/utils-math.awk" \
+        -f "$AWK_LIB/utils-activation.awk" \
+        -f "$AWK_LIB/utils-loss.awk" \
+        -f "$AWK_LIB/utils-shared.awk" \
+        "BEGIN { $prog }" \
+        /dev/null 2>/dev/null
 }

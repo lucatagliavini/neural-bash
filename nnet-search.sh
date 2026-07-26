@@ -29,6 +29,14 @@ MAX_JOBS=4
 EXTRA_FLAGS=""
 
 # ============================================================================
+# FUNZIONI DI UTILITÀ
+# ============================================================================
+
+function read_conf_key() {
+    grep "^$2=" "$1" 2>/dev/null | cut -d= -f2
+}
+
+# ============================================================================
 # USAGE
 # ============================================================================
 
@@ -141,8 +149,8 @@ run_combo() {
             --no-save $EXTRA_FLAGS 2>&1); then
         # Leggi best_mse da model.conf (scritto da nnet-run.sh anche con --no-save)
         local best_mse best_epoch
-        best_mse=$(grep '^best_mse='    "$model_dir/model.conf" 2>/dev/null | cut -d= -f2)
-        best_epoch=$(grep '^best_epoch=' "$model_dir/model.conf" 2>/dev/null | cut -d= -f2)
+        best_mse=$(  read_conf_key "$model_dir/model.conf" best_mse)
+        best_epoch=$(read_conf_key "$model_dir/model.conf" best_epoch)
         best_mse="${best_mse:-N/A}"
         best_epoch="${best_epoch:-N/A}"
         printf "%s\t%s\t%s\t%s\t%s\t%s\n" \

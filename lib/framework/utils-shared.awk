@@ -17,6 +17,14 @@
 # Svuota un intero array. Sostituisce "delete array" (non POSIX prima di POSIX.1-2008).
 function clear_array(arr,    k) { for (k in arr) delete arr[k] }
 
+# Fisher-Yates shuffle in-place su arr[1..n].
+function fisher_yates_shuffle(arr, n,    i, j, tmp) {
+    for (i = n; i >= 2; i--) {
+        j = int(rand() * i) + 1
+        tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp
+    }
+}
+
 # Funzione di logging, senza parametro vuol dire stdout,
 # altrimenti puo' ridirigere su file.
 function logmesg(flag, text, output) {
@@ -238,12 +246,9 @@ function load_dataset(dataset_file, num_inputs, dataset_meta, dataset_weights, d
 	}
 	close(dataset_file)
 
-	# Costruiamo un array di indici [1..nrow] e lo mescoliamo con Fisher-Yates
+	# Costruiamo un array di indici [1..nrow] e lo mescoliamo
 	for (i = 1; i <= nrow; i++) idx[i] = i
-	for (i = nrow; i >= 2; i--) {
-		j = int(rand() * i) + 1
-		tmp_i = idx[i]; idx[i] = idx[j]; idx[j] = tmp_i
-	}
+	fisher_yates_shuffle(idx, nrow)
 
 	# Calcolo dimensioni split
 	n_val   = (val_split > 0 && val_split < 1) ? int(nrow * val_split + 0.5) : 0
