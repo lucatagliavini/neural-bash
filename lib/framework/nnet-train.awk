@@ -116,8 +116,8 @@ BEGIN {
 				_b_size = _b_end - _b_start + 1
 
 				# Copia campioni del batch in batch_weights/batch_targets
-				delete batch_weights
-				delete batch_targets
+				clear_array(batch_weights)
+				clear_array(batch_targets)
 				for (_bi = 1; _bi <= _b_size; _bi++) {
 					_src = _perm[_b_start + _bi - 1]
 					_ncols = dataset_weights[_src, 0]
@@ -137,8 +137,8 @@ BEGIN {
 					adam_beta2_t *= adam_beta2
 				}
 
-				delete dropout_mask
-				delete layer_preact
+				clear_array(dropout_mask)
+				clear_array(layer_preact)
 				forward_pass(batch_meta, batch_weights, num_layers, layer_meta, layer_weights, layer_output,
 				             (dropout > 0), dropout, dropout_mask, layer_preact)
 				backward_pass(batch_meta, batch_targets, layer_meta, layer_weights, layer_output, layer_deltas, loss_function,
@@ -159,8 +159,8 @@ BEGIN {
 				adam_beta2_t *= adam_beta2
 			}
 
-			delete dropout_mask
-			delete layer_preact
+			clear_array(dropout_mask)
+			clear_array(layer_preact)
 			forward_pass(dataset_meta, dataset_weights, num_layers, layer_meta, layer_weights, layer_output,
 			             (dropout > 0), dropout, dropout_mask, layer_preact)
 			backward_pass(dataset_meta, dataset_targets, layer_meta, layer_weights, layer_output, layer_deltas, loss_function,

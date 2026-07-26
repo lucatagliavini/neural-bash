@@ -198,14 +198,22 @@ while IFS=$'\t' read -r tag arch lr opt best_mse best_epoch; do
     printf "%-4s  %-12s  %-8s  %-20s  %-12s  %s\n" \
         "$rank" "$arch" "$lr" "$opt" "$best_mse" "$best_epoch"
 done < <(
-    # Ordina numericamente per best_mse; FAILED (non numerico) va in fondo
+    # Ordina numericamente per best_mse; FAILED (non numerico) va in fondo.
+    # Insertion sort POSIX (no asorti gawk-specific).
     cat "$RESULTS_DIR"/*.txt | awk -F'\t' '
-        $5 == "FAILED" { failed[NR] = $0; next }
-        { ok[NR] = $0; key[NR] = $5+0 }
+        $5 == "FAILED" { failed[++nf] = $0; next }
+        { ok[++n] = $0; key[n] = $5+0 }
         END {
-            n = asorti(key, sorted_idx, "@val_num_asc")
-            for (i = 1; i <= n; i++) print ok[sorted_idx[i]]
-            for (k in failed) print failed[k]
+            for (i = 2; i <= n; i++) {
+                tmp_line = ok[i]; tmp_key = key[i]
+                j = i - 1
+                while (j >= 1 && key[j] > tmp_key) {
+                    ok[j+1] = ok[j]; key[j+1] = key[j]; j--
+                }
+                ok[j+1] = tmp_line; key[j+1] = tmp_key
+            }
+            for (i = 1; i <= n;  i++) print ok[i]
+            for (i = 1; i <= nf; i++) print failed[i]
         }
     '
 )

@@ -14,6 +14,9 @@
 # Tutti i cicli andranno da elemento 1 a elemento = a length.
 #
 
+# Svuota un intero array. Sostituisce "delete array" (non POSIX prima di POSIX.1-2008).
+function clear_array(arr,    k) { for (k in arr) delete arr[k] }
+
 # Funzione di logging, senza parametro vuol dire stdout,
 # altrimenti puo' ridirigere su file.
 function logmesg(flag, text, output) {

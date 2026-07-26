@@ -25,7 +25,7 @@ function forward_pass(dataset_meta, dataset_weights, num_layers, layer_meta, lay
 		logmesg(debug_forward, "[DEBUG] forward: starting cycle for sample: "sample"/"num_samples"\n")
 		
 		# Copia del sample su un array:
-		delete input_array
+		clear_array(input_array)
 		copy_matrix_row_to_array(dataset_weights, sample, input_array)
 		logmesg(debug_forward, "[DEBUG] forward: initialized input_array: "array_to_string(input_array)"\n")
 
@@ -80,7 +80,7 @@ function forward_pass(dataset_meta, dataset_weights, num_layers, layer_meta, lay
 			layer_output[layer_id, sample, 0] = num_neurons
 
 			# STEP 2 - Preparazione degli inputs per layer NEXT
-                        delete input_array
+                        clear_array(input_array)
                         for (neuron=1; neuron<=num_neurons; neuron++) {
                         	# Copio gli output di questo layer nel successivo:
                                 input_array[neuron] = layer_output[layer_id, sample, neuron]
