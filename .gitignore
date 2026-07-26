@@ -1,5 +1,10 @@
 tmp/
-example-logs/
+example-logs/**/*.log
+example-logs/**/*.log.*
+example-logs/**/*.log-*
+example-logs/**/*.backup
+example-logs/**/*.gz
+example-logs/**/*.gz.*
 models/*/best/
 models/*.backup/
 models/test-*/
