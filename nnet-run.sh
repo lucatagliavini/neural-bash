@@ -44,6 +44,7 @@ TASK="classification"
 NORMALIZE=0
 DROPOUT=0
 BATCH_SIZE=0
+SEED=""
 
 # ============================================================================
 # FUNZIONI DI UTILITÀ
@@ -82,6 +83,7 @@ Training Options:
   --normalize          Normalize input features with z-score (mean=0, std=1) computed on training data
   --dropout N          Dropout rate for hidden layers during training (e.g. 0.2, default: 0)
   --batch-size N       Mini-batch size (default: 0 = full-batch); set to 2-N for mini-batch SGD
+  --seed N             Random seed for reproducibility (shuffle, dropout); default: time-based
   --debug FLAG         Enable debug output (forward|backward|update|network|metrics|all)
 
 Prediction Options:
@@ -211,6 +213,7 @@ function do_train() {
         -v normalize="${NORMALIZE:-0}" \
         -v dropout="${DROPOUT:-0}" \
         -v batch_size="${BATCH_SIZE:-0}" \
+        -v seed="${SEED:-0}" \
         $DEBUG_FLAGS \
    	    -f "$LIB_DIR/utils-math.awk" \
         -f "$LIB_DIR/utils-activation.awk" \
@@ -378,6 +381,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --batch-size)
             BATCH_SIZE="$2"
+            shift 2
+            ;;
+        --seed)
+            SEED="$2"
             shift 2
             ;;
         --no-save)

@@ -1,4 +1,11 @@
 BEGIN {
+	# Seed per riproducibilità: se passato usa srand(seed), altrimenti srand() con time
+	if (seed != "" && seed > 0) {
+		srand(seed)
+	} else {
+		srand()
+	}
+
 	# Numero di epoche:
 	if (max_epochs == "" || max_epochs == 0) {
 		max_epochs = 1000

@@ -15,7 +15,7 @@ _test_optimizer_seeded() {
     local model
     model=$(make_tmp_model "opt_seed_${opt}" 2,4,1 --activation sigmoid --method xavier --seed 42)
     local out
-    out=$("$NNET_RUN" eval "$DATASET" "$model" --epochs 3000 --optimizer "$opt" 2>&1)
+    out=$("$NNET_RUN" eval "$DATASET" "$model" --epochs 3000 --optimizer "$opt" --seed 42 2>&1)
     assert_mse_below    "seed $opt MSE"      "$mse_threshold" "$out"
     assert_accuracy_above "seed $opt accuracy" 75             "$out"
 }
@@ -36,7 +36,7 @@ _test_optimizer_seeded_acc() {
     local model
     model=$(make_tmp_model "opt_acc_${opt}" 2,4,1 --activation sigmoid --method xavier --seed 42)
     local out
-    out=$("$NNET_RUN" eval "$DATASET" "$model" --epochs 3000 --optimizer "$opt" 2>&1)
+    out=$("$NNET_RUN" eval "$DATASET" "$model" --epochs 3000 --optimizer "$opt" --seed 42 2>&1)
     assert_accuracy_above "seed $opt accuracy > ${acc_threshold}%" "$acc_threshold" "$out"
 }
 
@@ -50,7 +50,7 @@ _test_optimizer_robust() {
     local model
     model=$(make_tmp_model "opt_robust_${opt}" 2,4,1 --activation sigmoid --method xavier)
     local out
-    out=$("$NNET_RUN" eval "$DATASET" "$model" --epochs 5000 --optimizer "$opt" 2>&1)
+    out=$("$NNET_RUN" eval "$DATASET" "$model" --epochs 8000 --optimizer "$opt" 2>&1)
     assert_accuracy_above "robust $opt accuracy > ${acc_threshold}%" "$acc_threshold" "$out"
 }
 

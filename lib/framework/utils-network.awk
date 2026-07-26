@@ -101,9 +101,9 @@ function save_nnetwork(model_dir, num_layers, layer_meta, layer_weights,
 		for (row = 1; row <= num_neurons; row++) {
 			for (col = 1; col <= num_inputs; col++) {
 				if (col < num_inputs) {
-					printf("%.6f ", layer_weights[layer_id, row, col]) >> layer_file
+					printf("%.10g ", layer_weights[layer_id, row, col]) >> layer_file
 				} else {
-					printf("%.6f", layer_weights[layer_id, row, col]) >> layer_file
+					printf("%.10g", layer_weights[layer_id, row, col]) >> layer_file
 				}
 			}
 			printf("\n") >> layer_file
