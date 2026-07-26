@@ -88,13 +88,13 @@ _test_search_mse_numeric() {
         --optimizer "adam" \
         --epochs 500 \
         --jobs 1 2>&1)
-    # Estrae il valore best_mse dalla prima riga di risultato
+    # Estrae best_mse (5a colonna) dalla riga di rank 1; gestisce notazione scientifica
     local mse
-    mse=$(echo "$out" | grep -E "^\s*1\s" | grep -oE "[0-9]+\.[0-9]+" | head -1)
-    if [[ -n "$mse" ]]; then
+    mse=$(echo "$out" | awk '/^\s*1\s/{print $5}')
+    if awk "BEGIN { exit ($mse+0 > 0) ? 0 : 1 }" 2>/dev/null; then
         _pass "best_mse è numerico ($mse)"
     else
-        _fail "best_mse è numerico" "valore non trovato nell'output: $out"
+        _fail "best_mse è numerico" "valore non trovato o zero nell'output: $out"
     fi
 }
 
@@ -111,9 +111,10 @@ _test_search_sorted() {
         --optimizer "adam" \
         --epochs 500 \
         --jobs 2 2>&1)
+    # Estrae best_mse (5a colonna) dalle righe di rank 1 e 2
     local mse1 mse2
-    mse1=$(echo "$out" | grep -E "^\s*1\s" | grep -oE "[0-9]+\.[0-9]+" | head -1)
-    mse2=$(echo "$out" | grep -E "^\s*2\s" | grep -oE "[0-9]+\.[0-9]+" | head -1)
+    mse1=$(echo "$out" | awk '/^\s*1\s/{print $5}')
+    mse2=$(echo "$out" | awk '/^\s*2\s/{print $5}')
     if [[ -z "$mse1" || -z "$mse2" ]]; then
         _fail "ordinamento: due righe nel ranking" "mse1='$mse1' mse2='$mse2'"
         return
