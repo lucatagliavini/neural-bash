@@ -90,7 +90,7 @@ _test_patience_warns_without_val() {
     model=$(make_tmp_model "es_warn" 2,4,1 --activation sigmoid --seed 42)
     out=$("$NNET_RUN" train "$DATASET" "$model" \
         --epochs 100 --optimizer sgd --patience 5 2>&1)
-    assert_match "warning patience senza val-split" "early stopping disabilitato" "$out"
+    assert_match "warning patience senza val-split" "patience.*val-split|val-split.*patience" "$out"
 }
 
 _test_patience_warns_without_val

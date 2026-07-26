@@ -40,6 +40,7 @@ GRAD_CLIP=""
 WEIGHT_DECAY=""
 VAL_SPLIT="0"
 PATIENCE=""
+MIN_DELTA=""
 TASK="classification"
 NORMALIZE=0
 DROPOUT=0
@@ -214,6 +215,7 @@ function do_train() {
         -v task="${TASK:-classification}" \
         -v val_split="${VAL_SPLIT:-0}" \
         -v patience="${PATIENCE:-0}" \
+        -v min_delta="${MIN_DELTA:-0}" \
         -v grad_clip="${GRAD_CLIP:-0}" \
         -v weight_decay="${WEIGHT_DECAY:-0}" \
         -v normalize="${NORMALIZE:-0}" \
@@ -367,6 +369,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --patience)
             PATIENCE="$2"
+            shift 2
+            ;;
+        --min-delta)
+            MIN_DELTA="$2"
             shift 2
             ;;
         --clip)

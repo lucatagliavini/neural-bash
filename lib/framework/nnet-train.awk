@@ -77,13 +77,22 @@ BEGIN {
 	best_checkpoint_dir = model_dir "/best"
 	system("mkdir -p \"" best_checkpoint_dir "\"")
 
-	# Early stopping: monitora val_mse, si attiva solo se val_split > 0
-	if (patience > 0 && (val_split == "" || val_split <= 0)) {
-		printf("[WARNING] train: --patience richiede --val-split > 0; early stopping disabilitato\n") > "/dev/stderr"
-		patience = 0
+	# Early stopping su val_mse: richiede --val-split > 0
+	use_val_patience = (patience > 0 && val_split != "" && val_split > 0)
+	if (patience > 0 && !use_val_patience) {
+		printf("[WARNING] train: --patience senza --val-split non attiva early stopping su val_mse\n") > "/dev/stderr"
 	}
 	best_val_mse    = 1e9
 	patience_count  = 0
+
+	# Early stopping su min-delta: monitora il train MSE, indipendente da --patience
+	if (min_delta == "" || min_delta < 0) min_delta = 0
+	min_delta_patience = (min_delta > 0) ? ((patience > 0) ? patience : 50) : 0
+	min_delta_count = 0
+	prev_mse        = 1e9
+	if (min_delta > 0) {
+		printf("[INFO] train: min-delta=%.8g, patience=%d epoche\n", min_delta, min_delta_patience)
+	}
 
 	# Determina la modalità e il batch size effettivo
 	n_train = dataset_meta["num_samples"]
@@ -188,8 +197,8 @@ BEGIN {
 			save_nnetwork(best_checkpoint_dir, num_layers, layer_meta, layer_weights)
 		}
 
-		# Early stopping su val_mse
-		if (patience > 0 && val_mse != "") {
+		# Early stopping su val_mse (richiede --val-split)
+		if (use_val_patience && val_mse != "") {
 			if (val_mse < best_val_mse) {
 				best_val_mse   = val_mse
 				patience_count = 0
@@ -201,6 +210,21 @@ BEGIN {
 					break
 				}
 			}
+		}
+
+		# Early stopping su min-delta: stoppa se miglioramento < soglia per N epoche
+		if (min_delta > 0) {
+			if ((prev_mse - mse) >= min_delta) {
+				min_delta_count = 0
+			} else {
+				min_delta_count++
+				if (min_delta_count >= min_delta_patience) {
+					printf("[INFO] train: early stopping at epoch %d (delta MSE=%.8g < min_delta=%.8g for %d epochs)\n",
+					       epoch_id, prev_mse - mse, min_delta, min_delta_patience)
+					break
+				}
+			}
+			prev_mse = mse
 		}
 
 		# Stampiamo solo se epoch e' ogni 100:
