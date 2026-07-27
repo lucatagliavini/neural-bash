@@ -104,6 +104,7 @@ BEGIN {
 	}
 
 	printf("[INFO] train: num_epochs = "max_epochs"\n")
+	interrupted = 0
 	for (epoch_id=1; epoch_id<=max_epochs; epoch_id++) {
 		# Se abbiamo decay di LR: (altrimenti rimane costante)
 		if (lr_decay > 0.0) {
@@ -227,6 +228,16 @@ BEGIN {
 			prev_mse = mse
 		}
 
+		# Controlla file sentinel per Ctrl+C (ogni 10 epoche)
+		if (interrupt_file != "" && epoch_id % 10 == 0) {
+			ret = system("test -f \"" interrupt_file "\"")
+			if (ret == 0) {
+				printf("[INFO] train: interrupted at epoch %d — saving checkpoint\n", epoch_id)
+				interrupted = 1
+				break
+			}
+		}
+
 		# Stampiamo solo se epoch e' ogni 100:
 		if (epoch_id == 1 || epoch_id == max_epochs || epoch_id % 100 == 0) {
 			if (val_mse != "") {
@@ -252,9 +263,11 @@ BEGIN {
 	printf("last_lr_decay=%.8g\n", lr_decay)                    >> meta_file
 	printf("last_momentum=%.8g\n", momentum)                    >> meta_file
 	printf("last_epochs=%d\n",     max_epochs)                  >> meta_file
+	printf("last_actual_epochs=%d\n", interrupted ? epoch_id : max_epochs) >> meta_file
 	printf("last_loss=%s\n",       loss_function)               >> meta_file
 	printf("best_mse=%.8g\n",      best_mse)                    >> meta_file
 	printf("best_epoch=%d\n",      best_epoch)                  >> meta_file
+	printf("interrupted=%d\n",     interrupted)                 >> meta_file
 	close(meta_file)
 
 	printf("[INFO] train: best MSE = %.6f (epoch %d) → saved in %s\n", best_mse, best_epoch, best_checkpoint_dir)

@@ -199,40 +199,72 @@ function do_train() {
     echo "                   loss=$LOSS_FUNCTION, momentum=$MOMENTUM, epochs=$MAX_EPOCHS, clip=${GRAD_CLIP:-off}, wd=${WEIGHT_DECAY:-0}, batch=${BATCH_SIZE:-0}"
     echo ""
 
-    awk \
-        -v dataset_file="$DATASET_FILE" \
-        -v num_inputs="$NUM_INPUTS" \
-        -v model_dir="$MODEL_DIR" \
-        -v num_layers="$NUM_LAYERS" \
-        -v optimizer="$OPTIMIZER" \
-        -v learning_rate="$LEARNING_RATE" \
-        -v lr_decay="$LR_DECAY" \
-        -v loss_function="$LOSS_FUNCTION" \
-        -v momentum="$MOMENTUM" \
-        -v max_epochs="$MAX_EPOCHS" \
-        -v save_model="$SAVE_MODEL" \
-        -v print_result=1 \
-        -v task="${TASK:-classification}" \
-        -v val_split="${VAL_SPLIT:-0}" \
-        -v patience="${PATIENCE:-0}" \
-        -v min_delta="${MIN_DELTA:-0}" \
-        -v grad_clip="${GRAD_CLIP:-0}" \
-        -v weight_decay="${WEIGHT_DECAY:-0}" \
-        -v normalize="${NORMALIZE:-0}" \
-        -v dropout="${DROPOUT:-0}" \
-        -v batch_size="${BATCH_SIZE:-0}" \
-        -v seed="${SEED:-0}" \
-        $DEBUG_FLAGS \
-   	    -f "$LIB_DIR/utils-math.awk" \
-        -f "$LIB_DIR/utils-activation.awk" \
-        -f "$LIB_DIR/utils-loss.awk" \
-        -f "$LIB_DIR/utils-shared.awk" \
-        -f "$LIB_DIR/utils-network.awk" \
-        -f "$LIB_DIR/utils-forward.awk" \
-        -f "$LIB_DIR/utils-backward.awk" \
-        -f "$LIB_DIR/utils-update.awk" \
-        -f "$LIB_DIR/nnet-train.awk" \
-        /dev/null
+    local interrupt_file="${MODEL_DIR}/.interrupt"
+    local exitcode_file="${MODEL_DIR}/.train_exitcode"
+    rm -f "$interrupt_file" "$exitcode_file"
+
+    # Lancia gawk in background con SIGINT ignorato nella subshell;
+    # così Ctrl+C non uccide gawk direttamente — viene gestito dal sentinel.
+    (
+        trap '' INT
+        gawk \
+            -v dataset_file="$DATASET_FILE" \
+            -v num_inputs="$NUM_INPUTS" \
+            -v model_dir="$MODEL_DIR" \
+            -v num_layers="$NUM_LAYERS" \
+            -v optimizer="$OPTIMIZER" \
+            -v learning_rate="$LEARNING_RATE" \
+            -v lr_decay="$LR_DECAY" \
+            -v loss_function="$LOSS_FUNCTION" \
+            -v momentum="$MOMENTUM" \
+            -v max_epochs="$MAX_EPOCHS" \
+            -v save_model="$SAVE_MODEL" \
+            -v print_result=1 \
+            -v task="${TASK:-classification}" \
+            -v val_split="${VAL_SPLIT:-0}" \
+            -v patience="${PATIENCE:-0}" \
+            -v min_delta="${MIN_DELTA:-0}" \
+            -v grad_clip="${GRAD_CLIP:-0}" \
+            -v weight_decay="${WEIGHT_DECAY:-0}" \
+            -v normalize="${NORMALIZE:-0}" \
+            -v dropout="${DROPOUT:-0}" \
+            -v batch_size="${BATCH_SIZE:-0}" \
+            -v seed="${SEED:-0}" \
+            -v interrupt_file="$interrupt_file" \
+            $DEBUG_FLAGS \
+            -f "$LIB_DIR/utils-math.awk" \
+            -f "$LIB_DIR/utils-activation.awk" \
+            -f "$LIB_DIR/utils-loss.awk" \
+            -f "$LIB_DIR/utils-shared.awk" \
+            -f "$LIB_DIR/utils-network.awk" \
+            -f "$LIB_DIR/utils-forward.awk" \
+            -f "$LIB_DIR/utils-backward.awk" \
+            -f "$LIB_DIR/utils-update.awk" \
+            -f "$LIB_DIR/nnet-train.awk" \
+            /dev/null
+        echo $? > "$exitcode_file"
+    ) &
+    local gawk_pid=$!
+
+    # Ctrl+C crea il file sentinel; gawk lo rileva entro 10 epoche e salva.
+    trap 'echo "[INFO] Interrupt received — waiting for gawk to save..."; touch "$interrupt_file"' INT
+
+    # wait può tornare anticipatamente per SIGINT; si riprova finché gawk non termina.
+    while kill -0 "$gawk_pid" 2>/dev/null; do
+        wait "$gawk_pid" 2>/dev/null
+    done
+    trap - INT
+    rm -f "$interrupt_file"
+
+    local exit_status=0
+    if [[ -f "$exitcode_file" ]]; then
+        exit_status=$(cat "$exitcode_file")
+        rm -f "$exitcode_file"
+    fi
+    if [[ "$exit_status" -ne 0 ]]; then
+        echo "[ERROR] Training failed (exit code $exit_status)" >&2
+        exit "$exit_status"
+    fi
 
     echo ""
     echo "[INFO] Training completed!"
@@ -256,9 +288,11 @@ last_lr=${last_lr}
 last_lr_decay=${last_lr_decay}
 last_momentum=${last_momentum}
 last_epochs=${last_epochs}
+last_actual_epochs=${last_actual_epochs}
 last_loss=${last_loss}
 best_mse=${best_mse}
 best_epoch=${best_epoch}
+interrupted=${interrupted:-0}
 CONFEOF
         rm -f "$meta_file"
     fi
