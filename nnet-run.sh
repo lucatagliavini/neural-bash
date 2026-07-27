@@ -36,6 +36,7 @@ LOSS_FUNCTION="mse"
 MAX_EPOCHS=1000
 SAVE_MODEL=1
 USE_BEST_CHECKPOINT=0
+RESUME=0
 GRAD_CLIP=""
 WEIGHT_DECAY=""
 VAL_SPLIT="0"
@@ -81,6 +82,7 @@ Training Options:
   --epochs N           Maximum number of training epochs (default: 1000)
   --no-save            Don't save the model after training
   --use-best           Use the best checkpoint (model_dir/best/) instead of the live weights
+  --resume             Resume training from last_actual_epochs in model.conf (keeps existing weights)
   --loss               Function for LOSS, [mse = default], if sigmoid activation [ce = cross-entropy] is possibile
   --task TASK          Task type: classification (default) or regression
   --val-split N        Fraction of data for validation set (e.g. 0.2, default: 0)
@@ -192,6 +194,28 @@ function setup_debug_flags() {
 # ============================================================================
 
 function do_train() {
+    # Gestione --resume: legge last_actual_epochs da model.conf e lo passa ad AWK
+    local RESUME_FROM_EPOCH=0
+    if [[ "$RESUME" == "1" ]]; then
+        local conf="${MODEL_DIR}/model.conf"
+        if [[ ! -f "$conf" ]]; then
+            echo "[ERROR] --resume: model.conf non trovato in $MODEL_DIR" >&2
+            exit 1
+        fi
+        local prev_interrupted prev_actual
+        prev_interrupted=$(read_conf_key "$conf" interrupted)
+        prev_actual=$(read_conf_key "$conf" last_actual_epochs)
+        if [[ -z "$prev_actual" ]]; then
+            echo "[ERROR] --resume: last_actual_epochs non trovato in model.conf" >&2
+            exit 1
+        fi
+        if [[ "${prev_interrupted:-0}" != "1" ]]; then
+            echo "[WARNING] --resume: il training precedente non risulta interrotto (interrupted=0); si continua comunque" >&2
+        fi
+        RESUME_FROM_EPOCH="$prev_actual"
+        echo "[INFO] Resuming from epoch $RESUME_FROM_EPOCH, adding $MAX_EPOCHS more epochs (total: $((RESUME_FROM_EPOCH + MAX_EPOCHS)))"
+    fi
+
     echo "[INFO] Starting training..."
     echo "[INFO] Dataset: $DATASET_FILE"
     echo "[INFO] Model: $MODEL_DIR"
@@ -218,6 +242,7 @@ function do_train() {
             -v loss_function="$LOSS_FUNCTION" \
             -v momentum="$MOMENTUM" \
             -v max_epochs="$MAX_EPOCHS" \
+            -v resume_from_epoch="$RESUME_FROM_EPOCH" \
             -v save_model="$SAVE_MODEL" \
             -v print_result=1 \
             -v task="${TASK:-classification}" \
@@ -435,6 +460,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --no-save)
             SAVE_MODEL=0
+            shift
+            ;;
+        --resume)
+            RESUME=1
             shift
             ;;
         --use-best)

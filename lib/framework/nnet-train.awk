@@ -103,9 +103,34 @@ BEGIN {
 		printf("[INFO] train: mini-batch SGD enabled (batch_size=%d, samples=%d)\n", eff_batch, n_train)
 	}
 
-	printf("[INFO] train: num_epochs = "max_epochs"\n")
+	# Resume: start_epoch > 1 quando si riprende un training interrotto.
+	# Per lr_decay e Adam occorre ricostruire lo stato delle epoche già fatte.
+	if (resume_from_epoch == "" || resume_from_epoch < 0) resume_from_epoch = 0
+	start_epoch = resume_from_epoch + 1
+
+	if (resume_from_epoch > 0) {
+		printf("[INFO] train: resuming from epoch %d (target: %d more epochs → total %d)\n",
+		       resume_from_epoch, max_epochs, resume_from_epoch + max_epochs)
+		# Ricostruiamo lr corrente alla epoch resume_from_epoch
+		if (lr_decay > 0.0) {
+			current_lr = base_learning_rate / (1 + lr_decay * resume_from_epoch)
+		}
+		# Ricostruiamo adam_beta1_t e adam_beta2_t come se fossero già state fatte
+		# resume_from_epoch passi (approssimazione: full-batch step = 1 per epoca)
+		if (optimizer == "adam") {
+			for (_r = 1; _r <= resume_from_epoch; _r++) {
+				adam_beta1_t *= adam_beta1
+				adam_beta2_t *= adam_beta2
+			}
+			printf("[WARNING] train: Adam state (m,v moments) not persisted — resume is approximate\n") > "/dev/stderr"
+		}
+		# Correggiamo max_epochs al totale assoluto
+		max_epochs = resume_from_epoch + max_epochs
+	}
+
+	printf("[INFO] train: epochs %d → %d\n", start_epoch, max_epochs)
 	interrupted = 0
-	for (epoch_id=1; epoch_id<=max_epochs; epoch_id++) {
+	for (epoch_id=start_epoch; epoch_id<=max_epochs; epoch_id++) {
 		# Se abbiamo decay di LR: (altrimenti rimane costante)
 		if (lr_decay > 0.0) {
 			current_lr = base_learning_rate / (1 + lr_decay * (epoch_id - 1))
