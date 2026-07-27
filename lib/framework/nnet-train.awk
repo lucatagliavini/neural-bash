@@ -182,6 +182,7 @@ BEGIN {
 
 			# Forward completo sull'intero training set per calcolare MSE/loss dell'epoca
 			forward_pass(dataset_meta, dataset_weights, num_layers, layer_meta, layer_weights, layer_output, 0, 0, _dm, _lp)
+			_fwd_clean = 1
 
 		} else {
 			# Full-batch: comportamento originale
@@ -200,6 +201,7 @@ BEGIN {
 			update_pass(dataset_meta, dataset_weights, layer_meta, layer_weights, weight_velocity, layer_output, layer_deltas, current_lr,
 						optimizer, weight_m, weight_v, adam_beta1, adam_beta2, adam_eps, adam_beta1_t, adam_beta2_t,
 						grad_clip, weight_decay)
+			_fwd_clean = (dropout == 0)
 		}
 
 		# Calcolo l'errore [mse e loss function] sull'intero training set:
@@ -299,8 +301,10 @@ BEGIN {
 
 	# Stampo le predizioni finali se richiesto:
 	if (print_result == 1) {
-		# Riesegue il forward senza dropout per le metriche finali
-		forward_pass(dataset_meta, dataset_weights, num_layers, layer_meta, layer_weights, layer_output, 0, 0, _dm, _lp)
+		# Riesegue il forward senza dropout solo se l'ultimo forward era con dropout attivo
+		if (!_fwd_clean) {
+			forward_pass(dataset_meta, dataset_weights, num_layers, layer_meta, layer_weights, layer_output, 0, 0, _dm, _lp)
+		}
 		printf("\n")
 		print_predictions(dataset_meta, dataset_targets, layer_meta, layer_output)
 		print_metrics(dataset_meta, dataset_targets, layer_meta, layer_output)
