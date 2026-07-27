@@ -153,7 +153,7 @@ assert_mse_below() {
         _fail "$name" "MSE non trovato nell'output"
         return
     fi
-    if awk "BEGIN { exit ($mse < $threshold) ? 0 : 1 }"; then
+    if awk -v m="$mse" -v t="$threshold" 'BEGIN { exit (m < t) ? 0 : 1 }'; then
         _pass "$name (MSE=$mse < $threshold)"
     else
         _fail "$name" "MSE=$mse >= soglia=$threshold"
@@ -170,7 +170,7 @@ assert_accuracy_above() {
         _fail "$name" "Accuracy non trovata nell'output"
         return
     fi
-    if awk "BEGIN { exit ($acc > $threshold) ? 0 : 1 }"; then
+    if awk -v a="$acc" -v t="$threshold" 'BEGIN { exit (a > t) ? 0 : 1 }'; then
         _pass "$name (Accuracy=${acc}% > ${threshold}%)"
     else
         _fail "$name" "Accuracy=${acc}% <= soglia=${threshold}%"

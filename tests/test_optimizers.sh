@@ -72,7 +72,7 @@ _test_lr_decay() {
     local final_lr
     final_lr=$(echo "$out" | grep "EPOCH 1000" | grep -oE "LR = [0-9.]+" | grep -oE "[0-9.]+$")
     if [[ -n "$final_lr" ]]; then
-        if awk "BEGIN { exit ($final_lr < 0.4) ? 0 : 1 }"; then
+        if awk -v lr="$final_lr" 'BEGIN { exit (lr < 0.4) ? 0 : 1 }'; then
             _pass "lr-decay attivo: LR finale=$final_lr < 0.4"
         else
             _fail "lr-decay attivo" "LR finale=$final_lr non è sceso sotto 0.4"

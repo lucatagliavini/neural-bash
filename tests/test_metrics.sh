@@ -64,7 +64,7 @@ _test_cm_diagonal() {
     # Con 100% accuracy la diagonale deve avere tutti valori > 0 e gli off-diagonal = 0
     local acc
     acc=$(echo "$out" | grep -oE "Accuracy +: [0-9.]+" | grep -oE "[0-9.]+$" | head -1)
-    if awk "BEGIN { exit ($acc >= 99) ? 0 : 1 }"; then
+    if [[ -n "$acc" ]] && awk -v a="$acc" 'BEGIN { exit (a >= 99) ? 0 : 1 }'; then
         # Conta gli zeri fuori diagonale: C1..C2, C1..C3, C2..C1, ecc.
         # Verifica assenza di errori cercando "0" nelle righe C1/C2/C3 dopo il primo campo
         local ok=1
