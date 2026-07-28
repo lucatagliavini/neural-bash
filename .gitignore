@@ -10,3 +10,4 @@ models/*.backup/
 models/test-*/
 *.tmp
 .train_meta
+deploy.sh
