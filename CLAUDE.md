@@ -101,16 +101,6 @@ w1 w2 ... bias
 w1 w2 ... bias
 ```
 
-## Session log — neural-log-analyzer
-
-All'inizio di ogni sessione su `neural-log-analyzer/`, leggere l'ultima sessione in
-`neural-log-analyzer/docs/sessions/` (file più recente per data e progressivo) per
-recuperare lo stato del progetto, i pendenti e le decisioni prese.
-
-Al termine di ogni sessione, creare un nuovo file in `neural-log-analyzer/docs/sessions/`
-con nome `YYYY-MM-DD-NN.md` (data odierna + progressivo a due cifre, es. `2026-07-29-01.md`)
-che documenti: lavoro svolto, stato finale del modello, pendenti per la sessione successiva.
-
 ## Dependencies
 
 - `gawk` (richiesto — usato ovunque, disponibile su Linux, WSL e AIX)
